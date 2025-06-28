@@ -1,0 +1,57 @@
+name: Deploy Lambda Code
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: "Environment to deploy to"
+        required: true
+        default: dev
+        type: choice
+        options:
+          - dev
+          - prod
+    # You can also add a push trigger for 'dev' if desired
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    env:
+      AWS_REGION: ap-southeast-2  # Or pull from secrets if env-specific
+      LAMBDA_FUNCTION_NAME_DEV: image-uploader-dev
+      LAMBDA_FUNCTION_NAME_PROD: image-uploader-prod
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Select AWS credentials
+        run: |
+          if [[ "${{ github.event.inputs.environment }}" == "dev" ]]; then
+            echo "AWS_ACCESS_KEY_ID=${{ secrets.AWS_ACCESS_KEY_ID_DEV }}" >> $GITHUB_ENV
+            echo "AWS_SECRET_ACCESS_KEY=${{ secrets.AWS_SECRET_ACCESS_KEY_DEV }}" >> $GITHUB_ENV
+            echo "LAMBDA_FUNCTION_NAME=${{ env.LAMBDA_FUNCTION_NAME_DEV }}" >> $GITHUB_ENV
+          else
+            echo "AWS_ACCESS_KEY_ID=${{ secrets.AWS_ACCESS_KEY_ID_PROD }}" >> $GITHUB_ENV
+            echo "AWS_SECRET_ACCESS_KEY=${{ secrets.AWS_SECRET_ACCESS_KEY_PROD }}" >> $GITHUB_ENV
+            echo "LAMBDA_FUNCTION_NAME=${{ env.LAMBDA_FUNCTION_NAME_PROD }}" >> $GITHUB_ENV
+          fi
+
+      - name: Set up AWS CLI
+        uses: aws-actions/configure-aws-credentials@v2
+        with:
+          aws-access-key-id: ${{ env.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ env.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Zip Lambda code
+        run: |
+          cd lambda
+          zip -r ../lambda.zip .
+
+      - name: Deploy to AWS Lambda
+        run: |
+          aws lambda update-function-code \
+            --function-name "$LAMBDA_FUNCTION_NAME" \
+            --zip-file fileb://lambda.zip
