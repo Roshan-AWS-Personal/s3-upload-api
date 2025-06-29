@@ -48,7 +48,7 @@ resource "aws_api_gateway_stage" "stage" {
 }
 
 resource "aws_api_gateway_method_response" "upload_options_200" {
-  rest_api_id = aws_api_gateway_rest_api.image_upload.id
+  rest_api_id = aws_api_gateway_rest_api.upload_api.id
   resource_id = aws_api_gateway_resource.upload.id
   http_method = "OPTIONS"
   status_code = "200"
@@ -65,7 +65,7 @@ resource "aws_api_gateway_method_response" "upload_options_200" {
 }
 
 resource "aws_api_gateway_integration_response" "upload_options_200" {
-  rest_api_id = aws_api_gateway_rest_api.image_upload.id
+  rest_api_id = aws_api_gateway_rest_api.upload_api.id
   resource_id = aws_api_gateway_resource.upload.id
   http_method = "OPTIONS"
   status_code = aws_api_gateway_method_response.upload_options_200.status_code
@@ -79,7 +79,7 @@ resource "aws_api_gateway_integration_response" "upload_options_200" {
 }
 
 resource "aws_api_gateway_method" "upload_options" {
-  rest_api_id   = aws_api_gateway_rest_api.image_upload.id
+  rest_api_id   = aws_api_gateway_rest_api.upload_api.id
   resource_id   = aws_api_gateway_resource.upload.id
   http_method   = "OPTIONS"
   authorization = "NONE"
