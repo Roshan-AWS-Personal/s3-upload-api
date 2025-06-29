@@ -6,7 +6,7 @@ import uuid
 import imghdr
 
 s3 = boto3.client("s3")
-BUCKET_NAME = os.environ.get("BUCKET_NAME")
+BUCKET_NAME = os.environ.get("BUCKET_NAME_TESTCHANGE")
 MAX_FILE_SIZE = 5 * 1024 * 1024  # 5 MB
 ALLOWED_IMAGE_TYPES = {"jpeg", "png"}
 
