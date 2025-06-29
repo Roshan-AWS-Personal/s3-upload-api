@@ -76,3 +76,4 @@ resource "aws_lambda_function" "image_uploader" {
 
   depends_on = [aws_iam_role_policy.lambda_s3_policy]
 }
+
