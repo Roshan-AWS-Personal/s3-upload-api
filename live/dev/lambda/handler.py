@@ -14,11 +14,24 @@ ALLOWED_IMAGE_TYPES = {"jpeg", "png"}
 
 def lambda_handler(event, context):
     try:
-        # Basic auth check (Bearer token)
+        # --- Handle CORS preflight ---
+        if event["httpMethod"] == "OPTIONS":
+            return {
+                "statusCode": 200,
+                "headers": {
+                    "Access-Control-Allow-Origin": "*",
+                    "Access-Control-Allow-Headers": "Content-Type, Authorization",
+                    "Access-Control-Allow-Methods": "OPTIONS,GET",
+                },
+                "body": json.dumps({"message": "CORS preflight OK"})
+            }
+
+        # --- Auth check ---
         auth_header = event["headers"].get("Authorization")
         if not auth_header or not is_authorized(auth_header):
             return response(401, "Unauthorized")
 
+        # --- Query parsing ---
         query = event.get("queryStringParameters") or {}
         filename = query.get("filename")
         content_type = query.get("content_type")
@@ -33,7 +46,7 @@ def lambda_handler(event, context):
         if ext not in ALLOWED_IMAGE_TYPES:
             return response(400, f"Unsupported image type: {ext}")
 
-        # Create unique key to avoid overwrites
+        # --- S3 Key Generation ---
         key = f"{uuid.uuid4()}_{sanitize_filename(filename)}"
 
         presigned_url = s3.generate_presigned_url(
@@ -43,7 +56,7 @@ def lambda_handler(event, context):
                 'Key': key,
                 'ContentType': content_type
             },
-            ExpiresIn=300  # URL valid for 5 mins
+            ExpiresIn=300
         )
 
         file_url = f"https://{BUCKET_NAME}.s3.amazonaws.com/{key}"
@@ -59,10 +72,9 @@ def sanitize_filename(name):
 
 
 def is_authorized(auth_header):
-    expected = os.environ.get("UPLOAD_API_SECRET")  # Set in Lambda env vars
+    expected = os.environ.get("UPLOAD_API_SECRET")
     if not expected:
-        return False  # Enforce auth strictly
-
+        return False
     scheme, _, value = auth_header.partition(" ")
     return scheme.lower() == "bearer" and value == expected
 
@@ -73,7 +85,7 @@ def response(status_code, body):
         "headers": {
             "Access-Control-Allow-Origin": "*",
             "Access-Control-Allow-Headers": "Content-Type, Authorization",
-            "Access-Control-Allow-Methods": "OPTIONS,GET"
+            "Access-Control-Allow-Methods": "OPTIONS,GET",
         },
         "body": json.dumps(body if isinstance(body, dict) else {"message": body})
     }
