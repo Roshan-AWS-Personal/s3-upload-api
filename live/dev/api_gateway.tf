@@ -47,23 +47,6 @@ resource "aws_api_gateway_stage" "stage" {
   deployment_id = aws_api_gateway_deployment.deployment.id
 }
 
-resource "aws_api_gateway_method_response" "upload_options_200" {
-  rest_api_id = aws_api_gateway_rest_api.upload_api.id
-  resource_id = aws_api_gateway_resource.upload.id
-  http_method = "OPTIONS"
-  status_code = "200"
-
-  response_models = {
-    "application/json" = "Empty"
-  }
-
-  response_parameters = {
-    "method.response.header.Access-Control-Allow-Headers" = true
-    "method.response.header.Access-Control-Allow-Methods" = true
-    "method.response.header.Access-Control-Allow-Origin"  = true
-  }
-}
-
 resource "aws_api_gateway_method" "upload_options" {
   rest_api_id   = aws_api_gateway_rest_api.upload_api.id
   resource_id   = aws_api_gateway_resource.upload.id
