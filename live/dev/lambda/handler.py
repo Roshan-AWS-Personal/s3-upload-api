@@ -1,76 +1,70 @@
 import os
 import boto3
 import uuid
-import imghdr
 import json
-import base64
 import logging
-from urllib.parse import parse_qs
+import base64
 import re
 
 s3 = boto3.client("s3")
 BUCKET_NAME = os.environ.get("BUCKET_NAME")
-MAX_FILE_SIZE = 5 * 1024 * 1024  # 5 MB
+MAX_FILE_SIZE = 5 * 1024 * 1024  # 5MB
 ALLOWED_IMAGE_TYPES = {"jpeg", "png"}
+
 
 def lambda_handler(event, context):
     try:
-        # API Gateway proxy integration sends base64-encoded body
-        if event.get("isBase64Encoded"):
-            body_bytes = base64.b64decode(event["body"])
-        else:
-            return response(400, "Expected base64-encoded body")
+        # Basic auth check (Bearer token)
+        auth_header = event["headers"].get("Authorization")
+        if not auth_header or not is_authorized(auth_header):
+            return response(401, "Unauthorized")
 
-        content_type = event["headers"].get("Content-Type") or event["headers"].get("content-type")
-        if not content_type or "multipart/form-data" not in content_type:
-            return response(400, "Unsupported content type. Must be multipart/form-data")
+        query = event.get("queryStringParameters") or {}
+        filename = query.get("filename")
+        content_type = query.get("content_type")
 
-        # Extract boundary from content-type
-        boundary = content_type.split("boundary=")[-1]
-        boundary_bytes = boundary.encode()
+        if not filename or not content_type:
+            return response(400, "Missing filename or content_type")
 
-        # Split parts manually (quick and dirty multipart parser)
-        parts = body_bytes.split(b"--" + boundary_bytes)
-        file_part = next((p for p in parts if b"Content-Disposition" in p and b"filename=" in p), None)
+        if not content_type.startswith("image/"):
+            return response(400, "Only image uploads are allowed")
 
-        if not file_part:
-            return response(400, "No image file found in multipart data")
+        ext = filename.rsplit(".", 1)[-1].lower()
+        if ext not in ALLOWED_IMAGE_TYPES:
+            return response(400, f"Unsupported image type: {ext}")
 
-        # Separate headers and file content
-        headers, file_data = file_part.split(b"\r\n\r\n", 1)
-        file_data = file_data.rstrip(b"\r\n--")
+        # Create unique key to avoid overwrites
+        key = f"{uuid.uuid4()}_{sanitize_filename(filename)}"
 
-        # Validate file size
-        if len(file_data) > MAX_FILE_SIZE:
-            return response(400, "File too large. Max size is 5MB")
-
-        # Validate file type using imghdr
-        image_type = imghdr.what(None, h=file_data)
-        if image_type not in ALLOWED_IMAGE_TYPES:
-            return response(400, f"Unsupported image type: {image_type}")
-        
-        # From headers string (bytes)
-        disposition = headers.decode()
-        match = re.search(r'filename="(.+?)"', disposition)
-        if match:
-            filename = match.group(1)
-        else:
-            return response(400, "Could not extract filename")
-
-        # Upload to S3
-        s3.put_object(
-            Bucket=BUCKET_NAME,
-            Key=filename,
-            Body=file_data,
-            ContentType=f"image/{image_type}"
+        presigned_url = s3.generate_presigned_url(
+            ClientMethod='put_object',
+            Params={
+                'Bucket': BUCKET_NAME,
+                'Key': key,
+                'ContentType': content_type
+            },
+            ExpiresIn=300  # URL valid for 5 mins
         )
 
-        s3_url = f"https://{BUCKET_NAME}.s3.amazonaws.com/{filename}"
-        return response(200, {"url": s3_url})
+        file_url = f"https://{BUCKET_NAME}.s3.amazonaws.com/{key}"
+        return response(200, {"upload_url": presigned_url, "file_url": file_url})
 
     except Exception as e:
-        logging.exception("Error handling upload")
+        logging.exception("Error generating presigned URL")
         return response(500, f"Internal server error: {str(e)}")
+
+
+def sanitize_filename(name):
+    return re.sub(r"[^\w.\-]", "_", name)
+
+
+def is_authorized(auth_header):
+    expected = os.environ.get("UPLOAD_API_SECRET")  # Set in Lambda env vars
+    if not expected:
+        return False  # Enforce auth strictly
+
+    scheme, _, value = auth_header.partition(" ")
+    return scheme.lower() == "bearer" and value == expected
 
 
 def response(status_code, body):
@@ -78,8 +72,8 @@ def response(status_code, body):
         "statusCode": status_code,
         "headers": {
             "Access-Control-Allow-Origin": "*",
-            "Access-Control-Allow-Headers": "Content-Type",
-            "Access-Control-Allow-Methods": "OPTIONS,POST"
+            "Access-Control-Allow-Headers": "Content-Type, Authorization",
+            "Access-Control-Allow-Methods": "OPTIONS,GET"
         },
-        "body": json.dumps(body if isinstance(body, dict) else { "message": body })
+        "body": json.dumps(body if isinstance(body, dict) else {"message": body})
     }

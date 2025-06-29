@@ -79,9 +79,24 @@ resource "aws_lambda_function" "image_uploader" {
   environment {
     variables = {
       BUCKET_NAME = aws_s3_bucket.image_upload_bucket.bucket
+      UPLOAD_API_SECRET = var.upload_api_secret
     }
   }
 
   depends_on = [aws_iam_role_policy.lambda_s3_policy]
+}
+
+data "template_file" "index_html" {
+  template = file("${path.module}/frontend/index.html.tpl")
+  vars = {
+    api_key = var.upload_api_secret
+  }
+}
+
+resource "aws_s3_object" "index_html" {
+  bucket       = aws_s3_bucket.frontend_site.id
+  key          = "index.html"
+  content      = data.template_file.index_html.rendered
+  content_type = "text/html"
 }
 

@@ -1,5 +1,3 @@
-# .github/workflows/terraform-deploy.yml
-
 name: "Terraform Deploy"
 
 on:
@@ -72,8 +70,7 @@ jobs:
             -backend-config="key=${{ env.STATE_PREFIX }}/${{ github.event.inputs.environment }}/terraform.tfstate" \
             -backend-config="region=${{ env.AWS_REGION }}" \
             -backend-config="dynamodb_table=${{ env.DYNAMODB_TABLE }}"
-      
-      # ✅ Terraform validate
+
       - name: Terraform Validate
         working-directory: ${{ steps.env.outputs.WORK_DIR }}
         run: terraform validate
@@ -92,3 +89,20 @@ jobs:
         if: ${{ github.event.inputs.confirm_apply == 'true' }}
         working-directory: ${{ steps.env.outputs.WORK_DIR }}
         run: terraform apply -auto-approve tfplan
+
+      - name: Inject API key and deploy frontend
+        if: ${{ github.event.inputs.confirm_apply == 'true' }}
+        run: |
+          echo "Injecting API key into HTML..."
+          if [[ "${{ github.event.inputs.environment }}" == "dev" ]]; then
+            TOKEN=${{ secrets.UPLOAD_API_SECRET_DEV }}
+            BUCKET="image-uploader-frontend-dev"
+          else
+            TOKEN=${{ secrets.UPLOAD_API_SECRET_PROD }}
+            BUCKET="image-uploader-frontend-prod"
+          fi
+
+          sed "s|__API_KEY__|Bearer $TOKEN|g" live/${{ github.event.inputs.environment }}/frontend/index.html.tpl > live/${{ github.event.inputs.environment }}/frontend/index.html
+
+          echo "Uploading index.html to S3..."
+          aws s3 cp live/${{ github.event.inputs.environment }}/frontend/index.html s3://$BUCKET/index.html --region ${{ env.AWS_REGION }} --content-type "text/html"
