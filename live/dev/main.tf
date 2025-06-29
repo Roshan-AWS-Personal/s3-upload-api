@@ -85,10 +85,3 @@ resource "aws_lambda_function" "image_uploader" {
 
   depends_on = [aws_iam_role_policy.lambda_s3_policy]
 }
-
-data "template_file" "index_html" {
-  template = file("${path.module}/frontend/index.html.tpl")
-  vars = {
-    api_key = var.upload_api_secret
-  }
-}
