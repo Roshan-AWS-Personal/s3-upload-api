@@ -47,6 +47,45 @@ resource "aws_api_gateway_stage" "stage" {
   deployment_id = aws_api_gateway_deployment.deployment.id
 }
 
+resource "aws_api_gateway_method_response" "upload_options_200" {
+  rest_api_id = aws_api_gateway_rest_api.image_upload.id
+  resource_id = aws_api_gateway_resource.upload.id
+  http_method = "OPTIONS"
+  status_code = "200"
+
+  response_models = {
+    "application/json" = "Empty"
+  }
+
+  response_parameters = {
+    "method.response.header.Access-Control-Allow-Headers" = true
+    "method.response.header.Access-Control-Allow-Methods" = true
+    "method.response.header.Access-Control-Allow-Origin"  = true
+  }
+}
+
+resource "aws_api_gateway_integration_response" "upload_options_200" {
+  rest_api_id = aws_api_gateway_rest_api.image_upload.id
+  resource_id = aws_api_gateway_resource.upload.id
+  http_method = "OPTIONS"
+  status_code = aws_api_gateway_method_response.upload_options_200.status_code
+  selection_pattern = ""
+
+  response_parameters = {
+    "method.response.header.Access-Control-Allow-Headers" = "'Content-Type'"
+    "method.response.header.Access-Control-Allow-Methods" = "'OPTIONS,POST'"
+    "method.response.header.Access-Control-Allow-Origin"  = "'*'"
+  }
+}
+
+resource "aws_api_gateway_method" "upload_options" {
+  rest_api_id   = aws_api_gateway_rest_api.image_upload.id
+  resource_id   = aws_api_gateway_resource.upload.id
+  http_method   = "OPTIONS"
+  authorization = "NONE"
+}
+
+
 output "upload_api_url" {
   value = "https://${aws_api_gateway_rest_api.upload_api.id}.execute-api.${var.aws_region}.amazonaws.com/${aws_api_gateway_stage.stage.stage_name}/upload"
 }
