@@ -92,11 +92,3 @@ data "template_file" "index_html" {
     api_key = var.upload_api_secret
   }
 }
-
-resource "aws_s3_object" "index_html" {
-  bucket       = aws_s3_bucket.frontend_site.id
-  key          = "index.html"
-  content      = data.template_file.index_html.rendered
-  content_type = "text/html"
-}
-
