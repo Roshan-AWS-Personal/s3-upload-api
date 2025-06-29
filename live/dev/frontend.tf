@@ -42,7 +42,7 @@ resource "aws_s3_bucket_policy" "allow_public_read" {
 resource "aws_s3_object" "index_html" {
   bucket       = aws_s3_bucket.frontend_site.id
   key          = "index.html"
-  source       = "${path.module}/../../frontend/index.html"
+  source       = "${path.module}/../frontend/index.html"
   content_type = "text/html"
-  etag         = filemd5("${path.module}/../../frontend/index.html")
+  etag         = filemd5("${path.module}/../frontend/index.html")
 }
