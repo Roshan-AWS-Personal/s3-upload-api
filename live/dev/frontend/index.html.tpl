@@ -75,7 +75,7 @@
 
         urlDisplay.innerHTML = '<p><strong>Uploaded URL:</strong> <a href="' + uploadUrl.split("?")[0] + '" target="_blank">' + uploadUrl.split("?")[0] + '</a></p>';
       } catch (err) {
-        urlDisplay.textContent = `Error: ${err.message}`;
+        urlDisplay.textContent = 'Error: ' + err.message;
       }
     });
   </script>
