@@ -14,8 +14,3 @@ variable "env" {
   type    = string
   default = "dev"
 }
-
-variable "upload_api_secret" {
-  type      = string
-  sensitive = true
-}

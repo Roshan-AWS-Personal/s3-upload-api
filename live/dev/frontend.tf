@@ -44,7 +44,7 @@ resource "aws_s3_bucket_policy" "allow_public_read" {
 data "template_file" "index_html" {
   template = file("${path.module}/frontend/index.html.tpl")
   vars = {
-    api_key = var.upload_api_secret
+    api_key = "gW75T+AcsXW4LLPMhup9Rv944JZ64EA9D6te5b/RxDI="
   }
 }
 
