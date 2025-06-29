@@ -50,12 +50,12 @@
           content_type: file.type
         });
 
-        const response = await fetch(`${apiUrl}?${query.toString()}`, {
-          method: 'GET',
-          headers: {
-            'Authorization': "Bearer ${BEARER_TOKEN}"
-          }
-        });
+        // const response = await fetch(`${apiUrl}?${query.toString()}`, {
+        //   method: 'GET',
+        //   headers: {
+        //     'Authorization': "Bearer ${BEARER_TOKEN}"
+        //   }
+        // });
 
         if (!response.ok) {
           urlDisplay.textContent = "Failed to get upload URL.";
