@@ -10,3 +10,7 @@ variable "state_prefix" {
 variable "dynamodb_table" {
   type = string
 }
+variable "env" {
+  type    = string
+  default = "dev"
+}
