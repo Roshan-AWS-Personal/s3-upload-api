@@ -40,13 +40,13 @@ resource "aws_s3_bucket_policy" "allow_public_read" {
     ]
   })
 }
-
 data "template_file" "index_html" {
   template = file("${path.module}/frontend/index.html.tpl")
   vars = {
-    api_key = "gW75T+AcsXW4LLPMhup9Rv944JZ64EA9D6te5b/RxDI="
+    BEARER_TOKEN = jsonencode("gW75T+AcsXW4LLPMhup9Rv944JZ64EA9D6te5b/RxDI=")
   }
 }
+
 
 resource "aws_s3_object" "index_html" {
   bucket       = aws_s3_bucket.frontend_site.id
