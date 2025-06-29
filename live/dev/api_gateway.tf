@@ -47,57 +47,6 @@ resource "aws_api_gateway_stage" "stage" {
   deployment_id = aws_api_gateway_deployment.deployment.id
 }
 
-resource "aws_api_gateway_method" "upload_options" {
-  rest_api_id   = aws_api_gateway_rest_api.upload_api.id
-  resource_id   = aws_api_gateway_resource.upload.id
-  http_method   = "OPTIONS"
-  authorization = "NONE"
-}
-
-resource "aws_api_gateway_method_response" "upload_options_200" {
-  rest_api_id = aws_api_gateway_rest_api.upload_api.id
-  resource_id = aws_api_gateway_resource.upload.id
-  http_method = aws_api_gateway_method.upload_options.http_method
-  status_code = "200"
-
-  response_parameters = {
-    "method.response.header.Access-Control-Allow-Headers" = true
-    "method.response.header.Access-Control-Allow-Methods" = true
-    "method.response.header.Access-Control-Allow-Origin"  = true
-  }
-
-  response_models = {
-    "application/json" = "Empty"
-  }
-}
-resource "aws_api_gateway_integration" "upload_options" {
-  rest_api_id             = aws_api_gateway_rest_api.upload_api.id
-  resource_id             = aws_api_gateway_resource.upload.id
-  http_method             = aws_api_gateway_method.upload_options.http_method
-  type                    = "MOCK"
-  passthrough_behavior    = "WHEN_NO_MATCH"
-
-  request_templates = {
-    "application/json" = <<EOF
-{
-  "statusCode": 200
-}
-EOF
-  }
-}
-resource "aws_api_gateway_integration_response" "upload_options_200" {
-  rest_api_id = aws_api_gateway_rest_api.upload_api.id
-  resource_id = aws_api_gateway_resource.upload.id
-  http_method = "OPTIONS"
-  status_code = aws_api_gateway_method_response.upload_options_200.status_code
-  selection_pattern = ""
-
-  response_parameters = {
-    "method.response.header.Access-Control-Allow-Headers" = "'Content-Type'"
-    "method.response.header.Access-Control-Allow-Methods" = "'OPTIONS,POST'"
-    "method.response.header.Access-Control-Allow-Origin"  = "'*'"
-  }
-}
 output "upload_api_url" {
   value = "https://${aws_api_gateway_rest_api.upload_api.id}.execute-api.${var.aws_region}.amazonaws.com/${aws_api_gateway_stage.stage.stage_name}/upload"
 }
