@@ -60,6 +60,19 @@ data "archive_file" "lambda_zip" {
 
 resource "aws_lambda_function" "image_uploader" {
   function_name = "image-uploader-dev"
-  filename      = data.archive_file.lambda_zip.output_path
-  role          = aws_iam_role.lambda_exec_role
+
+  filename         = data.archive_file.lambda_zip.output_path
+  source_code_hash = data.archive_file.lambda_zip.output_base64sha256
+
+  role    = aws_iam_role.lambda_exec_role.arn
+  handler = "handler.lambda_handler"
+  runtime = "python3.11"
+
+  environment {
+    variables = {
+      BUCKET_NAME = aws_s3_bucket.image_upload_bucket.bucket
+    }
+  }
+
+  depends_on = [aws_iam_role_policy.lambda_s3_policy]
 }
