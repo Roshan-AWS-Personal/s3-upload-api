@@ -2,6 +2,7 @@ import os
 import boto3
 import uuid
 import imghdr
+import json
 import base64
 import logging
 from urllib.parse import parse_qs
