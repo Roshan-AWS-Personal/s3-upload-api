@@ -6,6 +6,7 @@ import json
 import base64
 import logging
 from urllib.parse import parse_qs
+import re
 
 s3 = boto3.client("s3")
 BUCKET_NAME = os.environ.get("BUCKET_NAME")
@@ -47,9 +48,16 @@ def lambda_handler(event, context):
         image_type = imghdr.what(None, h=file_data)
         if image_type not in ALLOWED_IMAGE_TYPES:
             return response(400, f"Unsupported image type: {image_type}")
+        
+        # From headers string (bytes)
+        disposition = headers.decode()
+        match = re.search(r'filename="(.+?)"', disposition)
+        if match:
+            filename = match.group(1)
+        else:
+            return response(400, "Could not extract filename")
 
         # Upload to S3
-        filename = f"{uuid.uuid4()}.{image_type}"
         s3.put_object(
             Bucket=BUCKET_NAME,
             Key=filename,

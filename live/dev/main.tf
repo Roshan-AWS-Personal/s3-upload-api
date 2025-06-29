@@ -8,6 +8,14 @@ resource "aws_s3_bucket" "image_upload_bucket" {
   }
 }
 
+resource "aws_s3_bucket_versioning" "upload_bucket_versioning" {
+  bucket = aws_s3_bucket.upload_bucket.id
+
+  versioning_configuration {
+    status = "Enabled"
+  }
+}
+
 # IAM Role that Lambda will assume
 resource "aws_iam_role" "lambda_exec_role" {
   name = "lambda_s3_upload_role"
