@@ -85,7 +85,8 @@ def response(status_code, body):
         "headers": {
             "Access-Control-Allow-Origin": "*",
             "Access-Control-Allow-Headers": "Content-Type, Authorization",
-            "Access-Control-Allow-Methods": "OPTIONS,GET",
+            "Access-Control-Allow-Methods": "OPTIONS,GET,PUT",
         },
         "body": json.dumps(body if isinstance(body, dict) else {"message": body})
     }
+

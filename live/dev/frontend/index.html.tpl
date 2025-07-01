@@ -22,8 +22,8 @@
   </div>
 
   <script>
-    const BEARER_TOKEN = "${BEARER_TOKEN}";
-
+    const BEARER_TOKEN = "$${BEARER_TOKEN}";
+    
     const form = document.getElementById('uploadForm');
     const fileInput = document.getElementById('fileInput');
     const preview = document.getElementById('preview');
