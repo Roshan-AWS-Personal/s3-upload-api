@@ -1,3 +1,15 @@
+terraform {
+  required_providers {
+    aws = {
+      source  = "hashicorp/aws"
+      version = "~> 5.35" # or 5.30, 5.27, etc.
+    }
+  }
+
+  required_version = ">= 1.5.0"
+}
+
+
 
 resource "aws_s3_bucket" "image_upload_bucket" {
   bucket = "s3-image-upload-api-2712"
