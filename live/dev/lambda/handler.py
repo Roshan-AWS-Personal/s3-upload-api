@@ -69,7 +69,10 @@ def lambda_handler(event, context):
 
 
 def sanitize_filename(name):
-    return re.sub(r"[^\w.\-]", "_", name)
+    import urllib.parse
+    safe_name = re.sub(r"[^\w.\-]", "_", name)  # Replace spaces and unsafe characters
+    return urllib.parse.quote(safe_name)        # URL-encode it properly
+
 
 
 def is_authorized(auth_header):
