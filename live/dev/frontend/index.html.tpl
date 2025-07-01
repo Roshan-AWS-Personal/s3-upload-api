@@ -23,7 +23,7 @@
 
   <script>
     const BEARER_TOKEN = "$${BEARER_TOKEN}";
-    
+
     const form = document.getElementById('uploadForm');
     const fileInput = document.getElementById('fileInput');
     const preview = document.getElementById('preview');
@@ -53,7 +53,7 @@
         const response = await fetch(apiUrl + "?" + query.toString(), {
           method: 'GET',
           headers: {
-            "Authorization": "Bearer ${BEARER_TOKEN}"
+              "Authorization": "Bearer " + BEARER_TOKEN
           }
         });
         
