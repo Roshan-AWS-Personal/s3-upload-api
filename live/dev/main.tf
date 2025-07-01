@@ -8,9 +8,6 @@ terraform {
 
   required_version = ">= 1.5.0"
 }
-
-
-
 resource "aws_s3_bucket" "image_upload_bucket" {
   bucket = "s3-image-upload-api-2712"
   force_destroy = true
@@ -19,6 +16,19 @@ resource "aws_s3_bucket" "image_upload_bucket" {
     Name = "image-upload-api-bucket"
   }
 }
+
+resource "aws_s3_bucket_cors_configuration" "upload_bucket_cors" {
+  bucket = aws_s3_bucket.image_upload_bucket.id
+
+  cors_rule {
+    allowed_headers = ["*"]
+    allowed_methods = ["PUT", "GET"]
+    allowed_origins = ["*"]
+    expose_headers  = ["ETag"]
+    max_age_seconds = 3000
+  }
+}
+
 
 resource "aws_s3_bucket_versioning" "upload_bucket_versioning" {
   bucket = aws_s3_bucket.image_upload_bucket.id
