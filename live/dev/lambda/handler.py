@@ -32,6 +32,7 @@ def lambda_handler(event, context):
             return response(401, "Unauthorized")
 
         # --- Query parsing ---
+        print("Authorization header:", auth_header)
         query = event.get("queryStringParameters") or {}
         filename = query.get("filename")
         content_type = query.get("content_type")
@@ -60,7 +61,6 @@ def lambda_handler(event, context):
         )
 
         file_url = f"https://{BUCKET_NAME}.s3.amazonaws.com/{key}"
-        print("Authorization header:", auth_header)
         return response(200, {"upload_url": presigned_url, "file_url": file_url})
 
     except Exception as e:

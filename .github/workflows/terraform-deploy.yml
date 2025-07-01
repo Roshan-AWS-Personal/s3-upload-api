@@ -104,7 +104,7 @@ jobs:
             BUCKET="image-uploader-frontend-prod"
           fi
 
-          sed "s|__API_KEY__|Bearer $TOKEN|g" live/${{ github.event.inputs.environment }}/frontend/index.html.tpl > live/${{ github.event.inputs.environment }}/frontend/index.html
+          sed "s|__BEARER_TOKEN__|$TOKEN|g" live/${{ github.event.inputs.environment }}/frontend/index.html.tpl > live/${{ github.event.inputs.environment }}/frontend/index.html
 
           echo "Uploading index.html to S3..."
           aws s3 cp live/${{ github.event.inputs.environment }}/frontend/index.html s3://$BUCKET/index.html --region ${{ env.AWS_REGION }} --content-type "text/html"

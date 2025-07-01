@@ -98,7 +98,10 @@ resource "aws_api_gateway_integration_response" "upload_options_response" {
     "application/json" = ""
   }
 
-  depends_on = [aws_api_gateway_integration.upload_options_mock]
+  depends_on = [
+  aws_api_gateway_integration.upload_options_mock,
+  aws_api_gateway_method_response.upload_options_response
+    ]
 }
 
 output "upload_api_url" {
