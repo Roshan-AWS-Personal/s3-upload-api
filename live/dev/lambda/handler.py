@@ -21,7 +21,7 @@ def lambda_handler(event, context):
                 "headers": {
                     "Access-Control-Allow-Origin": "*",
                     "Access-Control-Allow-Headers": "Content-Type, Authorization",
-                    "Access-Control-Allow-Methods": "OPTIONS,GET",
+                    "Access-Control-Allow-Methods": "OPTIONS,GET,PUT",
                 },
                 "body": json.dumps({"message": "CORS preflight OK"})
             }
