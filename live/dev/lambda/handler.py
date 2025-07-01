@@ -9,8 +9,7 @@ import re
 s3 = boto3.client("s3")
 BUCKET_NAME = os.environ.get("BUCKET_NAME")
 MAX_FILE_SIZE = 5 * 1024 * 1024  # 5MB
-ALLOWED_IMAGE_TYPES = {"jpeg", "png"}
-
+ALLOWED_IMAGE_TYPES = {"jpeg", "jpg", "png"}
 
 def lambda_handler(event, context):
     try:
