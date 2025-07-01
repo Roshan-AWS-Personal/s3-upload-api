@@ -53,7 +53,7 @@
         const response = await fetch(apiUrl + "?" + query.toString(), {
           method: 'GET',
           headers: {
-            "Authorization": "Bearer " + BEARER_TOKEN
+            "Authorization": BEARER_TOKEN
           }
         });
         
