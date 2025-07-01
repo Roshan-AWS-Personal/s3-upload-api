@@ -22,7 +22,7 @@
   </div>
 
   <script>
-    const BEARER_TOKEN = "__BEARER_TOKEN__";
+    const BEARER_TOKEN = "__API_KEY__";
 
     const form = document.getElementById('uploadForm');
     const fileInput = document.getElementById('fileInput');
