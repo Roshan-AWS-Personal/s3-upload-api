@@ -60,6 +60,7 @@ def lambda_handler(event, context):
         )
 
         file_url = f"https://{BUCKET_NAME}.s3.amazonaws.com/{key}"
+        print("Authorization header:", auth_header)
         return response(200, {"upload_url": presigned_url, "file_url": file_url})
 
     except Exception as e:
