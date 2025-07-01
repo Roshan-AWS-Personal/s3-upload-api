@@ -29,6 +29,8 @@ jobs:
       AWS_SECRET_ACCESS_KEY_DEV: ${{ secrets.AWS_SECRET_ACCESS_KEY_DEV }}
       AWS_ACCESS_KEY_ID_PROD:    ${{ secrets.AWS_ACCESS_KEY_ID_PROD }}
       AWS_SECRET_ACCESS_KEY_PROD: ${{ secrets.AWS_SECRET_ACCESS_KEY_PROD }}
+      AWS_UPLOAD_API_SECRET_DEV: ${{ secrets.UPLOAD_API_SECRET_DEV }}
+      AWS_UPLOAD_API_SECRET_PROD: ${{ secrets.UPLOAD_API_SECRET_PROD }}
 
       # Backend resources
       STATE_BUCKET_DEV:   ${{ secrets.STATE_BUCKET_DEV }}
@@ -95,10 +97,10 @@ jobs:
         run: |
           echo "Injecting API key into HTML..."
           if [[ "${{ github.event.inputs.environment }}" == "dev" ]]; then
-            TOKEN=${{ secrets.UPLOAD_API_SECRET_DEV }}
+            TOKEN=${{ env.AWS_UPLOAD_API_SECRET_DEV }}
             BUCKET="image-uploader-frontend-dev"
           else
-            TOKEN=${{ secrets.UPLOAD_API_SECRET_PROD }}
+            TOKEN=${{ env.AWS_UPLOAD_API_SECRET_PROD }}
             BUCKET="image-uploader-frontend-prod"
           fi
 
