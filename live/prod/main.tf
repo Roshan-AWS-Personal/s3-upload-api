@@ -89,7 +89,7 @@ data "archive_file" "lambda_zip" {
 }
 
 resource "aws_lambda_function" "image_uploader" {
-  function_name = "image-uploader-dev"
+  function_name = "image-uploader-prod"
 
   filename         = data.archive_file.lambda_zip.output_path
   source_code_hash = data.archive_file.lambda_zip.output_base64sha256
