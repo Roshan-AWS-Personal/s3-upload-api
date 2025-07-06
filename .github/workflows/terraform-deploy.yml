@@ -85,6 +85,7 @@ jobs:
             -var="state_bucket=${{ env.STATE_BUCKET }}" \
             -var="state_prefix=${{ env.STATE_PREFIX }}" \
             -var="dynamodb_table=${{ env.DYNAMODB_TABLE }}" \
+            -var="upload_api_secret=$TOKEN" \
             -out=tfplan
 
       - name: Terraform Apply (manual)
