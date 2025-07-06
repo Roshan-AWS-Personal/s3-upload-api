@@ -86,6 +86,7 @@ jobs:
           else
             SECRET=${{ env.AWS_UPLOAD_API_SECRET_PROD }}
           fi
+          echo "Deploying with secret: $SECRET"
           terraform plan \
             -var="aws_region=${{ env.AWS_REGION }}" \
             -var="state_bucket=${{ env.STATE_BUCKET }}" \
@@ -112,14 +113,14 @@ jobs:
         run: |
           echo "Injecting API key into HTML..."
           if [[ "${{ github.event.inputs.environment }}" == "dev" ]]; then
-            TOKEN="${{ secrets.UPLOAD_API_SECRET_DEV }}"
+            TOKEN=${{ env.AWS_UPLOAD_API_SECRET_DEV }}
+            echo "TF_VAR_upload_api_secret=$TOKEN" >> $GITHUB_ENV
+            BUCKET="image-uploader-frontend-dev"
           else
-            TOKEN="${{ secrets.UPLOAD_API_SECRET_PROD }}"
+            TOKEN=${{ env.AWS_UPLOAD_API_SECRET_PROD }}
+            echo "TF_VAR_upload_api_secret=$TOKEN" >> $GITHUB_ENV
+            BUCKET="image-uploader-frontend-prod"
           fi
-
-          echo "Deploying with secret: ${TOKEN:0:4}****"
-
-          echo "TF_VAR_upload_api_secret=$TOKEN" >> $GITHUB_ENV
 
           sed "s|__API_KEY__|Bearer $TOKEN|g" live/${{ github.event.inputs.environment }}/frontend/index.html.tpl > live/${{ github.event.inputs.environment }}/frontend/index.html
 
