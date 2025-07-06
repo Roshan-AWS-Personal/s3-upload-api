@@ -76,7 +76,7 @@ def sanitize_filename(name):
 
 def is_authorized(auth_header):
     # expected = os.environ.get("UPLOAD_API_SECRET")
-    expected = "gW75T+AcsXW4LLPMhup9Rv944JZ64EA9D6te5b/RxDI="
+    expected = "2Kw81cE/a+5AR+xl35YiUnnv/DN12MlYzrTBVrTwOgA="
     if not expected:
         return False
     scheme, _, value = auth_header.partition(" ")

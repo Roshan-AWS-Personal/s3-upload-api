@@ -101,7 +101,7 @@ resource "aws_lambda_function" "image_uploader" {
   environment {
     variables = {
       BUCKET_NAME = aws_s3_bucket.image_upload_bucket.bucket
-      UPLOAD_API_SECRET = "gW75T+AcsXW4LLPMhup9Rv944JZ64EA9D6te5b/RxDI="
+      UPLOAD_API_SECRET = "2Kw81cE/a+5AR+xl35YiUnnv/DN12MlYzrTBVrTwOgA="
     }
   }
 
