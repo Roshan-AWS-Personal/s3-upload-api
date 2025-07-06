@@ -43,7 +43,7 @@ resource "aws_s3_bucket_policy" "allow_public_read" {
 data "template_file" "index_html" {
   template = file("${path.module}/frontend/index.html.tpl")
   vars = {
-    BEARER_TOKEN = "2Kw81cE/a+5AR+xl35YiUnnv/DN12MlYzrTBVrTwOgA="
+    BEARER_TOKEN = var.upload_api_secret
   }
 }
 
