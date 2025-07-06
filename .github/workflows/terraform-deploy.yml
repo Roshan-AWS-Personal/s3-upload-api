@@ -82,16 +82,16 @@ jobs:
         working-directory: ${{ steps.env.outputs.WORK_DIR }}
         run: |
           if [[ "${{ github.event.inputs.environment }}" == "dev" ]]; then
-            SECRET=${{ env.AWS_UPLOAD_API_SECRET_DEV }}
+            SECRET="$AWS_UPLOAD_API_SECRET_DEV"
           else
-            SECRET=${{ env.AWS_UPLOAD_API_SECRET_PROD }}
+            SECRET="$AWS_UPLOAD_API_SECRET_PROD"
           fi
-          echo "Deploying with secret: $SECRET"
+
           terraform plan \
-            -var="aws_region=${{ env.AWS_REGION }}" \
-            -var="state_bucket=${{ env.STATE_BUCKET }}" \
-            -var="state_prefix=${{ env.STATE_PREFIX }}" \
-            -var="dynamodb_table=${{ env.DYNAMODB_TABLE }}" \
+            -var="aws_region=${AWS_REGION}" \
+            -var="state_bucket=${STATE_BUCKET}" \
+            -var="state_prefix=${STATE_PREFIX}" \
+            -var="dynamodb_table=${DYNAMODB_TABLE}" \
             -var="upload_api_secret=$SECRET" \
             -out=tfplan
 
@@ -101,9 +101,9 @@ jobs:
         working-directory: ${{ steps.env.outputs.WORK_DIR }}
         run: |
           if [[ "${{ github.event.inputs.environment }}" == "dev" ]]; then
-            SECRET=${{ env.AWS_UPLOAD_API_SECRET_DEV }}
+            SECRET="$AWS_UPLOAD_API_SECRET_DEV"
           else
-            SECRET=${{ env.AWS_UPLOAD_API_SECRET_PROD }}
+            SECRET="$AWS_UPLOAD_API_SECRET_PROD"
           fi
 
           terraform apply -auto-approve tfplan
@@ -113,14 +113,14 @@ jobs:
         run: |
           echo "Injecting API key into HTML..."
           if [[ "${{ github.event.inputs.environment }}" == "dev" ]]; then
-            TOKEN=${{ env.AWS_UPLOAD_API_SECRET_DEV }}
-            echo "TF_VAR_upload_api_secret=$TOKEN" >> $GITHUB_ENV
-            BUCKET="image-uploader-frontend-dev"
+            TOKEN="${{ secrets.UPLOAD_API_SECRET_DEV }}"
           else
-            TOKEN=${{ env.AWS_UPLOAD_API_SECRET_PROD }}
-            echo "TF_VAR_upload_api_secret=$TOKEN" >> $GITHUB_ENV
-            BUCKET="image-uploader-frontend-prod"
+            TOKEN="${{ secrets.UPLOAD_API_SECRET_PROD }}"
           fi
+
+          echo "Deploying with secret: ${TOKEN:0:4}****"
+
+          echo "TF_VAR_upload_api_secret=$TOKEN" >> $GITHUB_ENV
 
           sed "s|__API_KEY__|Bearer $TOKEN|g" live/${{ github.event.inputs.environment }}/frontend/index.html.tpl > live/${{ github.event.inputs.environment }}/frontend/index.html
 
