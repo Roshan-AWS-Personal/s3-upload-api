@@ -12,7 +12,7 @@ variable "dynamodb_table" {
 }
 variable "env" {
   type    = string
-  default = "dev"
+  default = "prod"
 }
 
 variable "upload_api_secret" {
