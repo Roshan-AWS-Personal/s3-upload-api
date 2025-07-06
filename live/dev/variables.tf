@@ -14,3 +14,9 @@ variable "env" {
   type    = string
   default = "dev"
 }
+
+variable "upload_api_secret" {
+  description = "The secret token used to authenticate API calls"
+  type        = string
+  sensitive   = true
+}

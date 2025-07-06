@@ -98,9 +98,11 @@ jobs:
           echo "Injecting API key into HTML..."
           if [[ "${{ github.event.inputs.environment }}" == "dev" ]]; then
             TOKEN=${{ env.AWS_UPLOAD_API_SECRET_DEV }}
+            export TF_VAR_upload_api_secret: ${{ secrets.UPLOAD_API_SECRET_DEV }}
             BUCKET="image-uploader-frontend-dev"
           else
             TOKEN=${{ env.AWS_UPLOAD_API_SECRET_PROD }}
+            export TF_VAR_upload_api_secret: ${{ secrets.UPLOAD_API_SECRET_PROD }}
             BUCKET="image-uploader-frontend-prod"
           fi
 
