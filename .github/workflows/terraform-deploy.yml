@@ -77,21 +77,36 @@ jobs:
         working-directory: ${{ steps.env.outputs.WORK_DIR }}
         run: terraform validate
 
+
       - name: Terraform Plan
         working-directory: ${{ steps.env.outputs.WORK_DIR }}
         run: |
+          if [[ "${{ github.event.inputs.environment }}" == "dev" ]]; then
+            SECRET=${{ env.AWS_UPLOAD_API_SECRET_DEV }}
+          else
+            SECRET=${{ env.AWS_UPLOAD_API_SECRET_PROD }}
+          fi
+          echo "Deploying with secret: $SECRET"
           terraform plan \
             -var="aws_region=${{ env.AWS_REGION }}" \
             -var="state_bucket=${{ env.STATE_BUCKET }}" \
             -var="state_prefix=${{ env.STATE_PREFIX }}" \
             -var="dynamodb_table=${{ env.DYNAMODB_TABLE }}" \
-            -var="upload_api_secret=$TOKEN" \
+            -var="upload_api_secret=$SECRET" \
             -out=tfplan
+
 
       - name: Terraform Apply (manual)
         if: ${{ github.event.inputs.confirm_apply == 'true' }}
         working-directory: ${{ steps.env.outputs.WORK_DIR }}
-        run: terraform apply -auto-approve tfplan
+        run: |
+          if [[ "${{ github.event.inputs.environment }}" == "dev" ]]; then
+            SECRET=${{ env.AWS_UPLOAD_API_SECRET_DEV }}
+          else
+            SECRET=${{ env.AWS_UPLOAD_API_SECRET_PROD }}
+          fi
+
+          terraform apply -auto-approve tfplan
 
       - name: Inject API key and deploy frontend
         if: ${{ github.event.inputs.confirm_apply == 'true' }}
