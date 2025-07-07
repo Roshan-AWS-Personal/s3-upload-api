@@ -10,3 +10,13 @@ variable "state_prefix" {
 variable "dynamodb_table" {
   type = string
 }
+variable "env" {
+  type    = string
+  default = "prod"
+}
+
+variable "upload_api_secret" {
+  description = "The secret token used to authenticate API calls"
+  type        = string
+  sensitive   = true
+}

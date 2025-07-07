@@ -1,5 +1,3 @@
-# .github/workflows/terraform-deploy.yml
-
 name: "Terraform Deploy"
 
 on:
@@ -31,6 +29,8 @@ jobs:
       AWS_SECRET_ACCESS_KEY_DEV: ${{ secrets.AWS_SECRET_ACCESS_KEY_DEV }}
       AWS_ACCESS_KEY_ID_PROD:    ${{ secrets.AWS_ACCESS_KEY_ID_PROD }}
       AWS_SECRET_ACCESS_KEY_PROD: ${{ secrets.AWS_SECRET_ACCESS_KEY_PROD }}
+      AWS_UPLOAD_API_SECRET_DEV: ${{ secrets.UPLOAD_API_SECRET_DEV }}
+      AWS_UPLOAD_API_SECRET_PROD: ${{ secrets.UPLOAD_API_SECRET_PROD }}
 
       # Backend resources
       STATE_BUCKET_DEV:   ${{ secrets.STATE_BUCKET_DEV }}
@@ -64,11 +64,6 @@ jobs:
         run: |
           echo "WORK_DIR=live/${{ github.event.inputs.environment }}" >> $GITHUB_OUTPUT
 
-      # ✅ Terraform validate
-      - name: Terraform Validate
-        working-directory: ${{ steps.env.outputs.WORK_DIR }}
-        run: terraform validate
-
       - name: Terraform Init
         working-directory: ${{ steps.env.outputs.WORK_DIR }}
         run: |
@@ -78,17 +73,56 @@ jobs:
             -backend-config="region=${{ env.AWS_REGION }}" \
             -backend-config="dynamodb_table=${{ env.DYNAMODB_TABLE }}"
 
+      - name: Terraform Validate
+        working-directory: ${{ steps.env.outputs.WORK_DIR }}
+        run: terraform validate
+
+
       - name: Terraform Plan
         working-directory: ${{ steps.env.outputs.WORK_DIR }}
         run: |
+          if [[ "${{ github.event.inputs.environment }}" == "dev" ]]; then
+            SECRET=${{ env.AWS_UPLOAD_API_SECRET_DEV }}
+          else
+            SECRET=${{ env.AWS_UPLOAD_API_SECRET_PROD }}
+          fi
+          echo "Deploying with secret: $SECRET"
           terraform plan \
             -var="aws_region=${{ env.AWS_REGION }}" \
             -var="state_bucket=${{ env.STATE_BUCKET }}" \
             -var="state_prefix=${{ env.STATE_PREFIX }}" \
             -var="dynamodb_table=${{ env.DYNAMODB_TABLE }}" \
+            -var="upload_api_secret=$SECRET" \
             -out=tfplan
+
 
       - name: Terraform Apply (manual)
         if: ${{ github.event.inputs.confirm_apply == 'true' }}
         working-directory: ${{ steps.env.outputs.WORK_DIR }}
-        run: terraform apply -auto-approve tfplan
+        run: |
+          if [[ "${{ github.event.inputs.environment }}" == "dev" ]]; then
+            SECRET="$AWS_UPLOAD_API_SECRET_DEV"
+          else
+            SECRET="$AWS_UPLOAD_API_SECRET_PROD"
+          fi
+
+          terraform apply -auto-approve tfplan
+
+      - name: Inject API key and deploy frontend
+        if: ${{ github.event.inputs.confirm_apply == 'true' }}
+        run: |
+          echo "Injecting API key into HTML..."
+          if [[ "${{ github.event.inputs.environment }}" == "dev" ]]; then
+            TOKEN=${{ env.AWS_UPLOAD_API_SECRET_DEV }}
+            echo "TF_VAR_upload_api_secret=$TOKEN" >> $GITHUB_ENV
+            BUCKET="image-uploader-frontend-dev"
+          else
+            TOKEN=${{ env.AWS_UPLOAD_API_SECRET_PROD }}
+            echo "TF_VAR_upload_api_secret=$TOKEN" >> $GITHUB_ENV
+            BUCKET="image-uploader-frontend-prod"
+          fi
+
+          sed "s|__API_KEY__|Bearer $TOKEN|g" live/${{ github.event.inputs.environment }}/frontend/index.html.tpl > live/${{ github.event.inputs.environment }}/frontend/index.html
+
+          echo "Uploading index.html to S3..."
+          aws s3 cp live/${{ github.event.inputs.environment }}/frontend/index.html s3://$BUCKET/index.html --region ${{ env.AWS_REGION }} --content-type "text/html"
