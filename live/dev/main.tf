@@ -39,7 +39,7 @@ resource "aws_s3_bucket_versioning" "upload_bucket_versioning" {
 }
 
 # IAM Role that Lambda will assume
-resource "aws_iam_role" "lambda_exec_role" {
+resource "aws_iam_role" "image_uploader_lambda_exec_role" {
   name = "lambda_s3_upload_role"
 
   assume_role_policy = jsonencode({
@@ -74,14 +74,14 @@ resource "aws_iam_policy" "dynamodb_write_policy" {
 }
 
 resource "aws_iam_role_policy_attachment" "lambda_dynamodb_attach" {
-  role       = aws_iam_role.image_uploader_exec_role.name
+  role       = aws_iam_role.image_uploader_lambda_exec_role.name
   policy_arn = aws_iam_policy.dynamodb_write_policy.arn
 }
 
 # IAM Policy to allow Lambda to write to S3
 resource "aws_iam_role_policy" "lambda_s3_policy" {
   name   = "lambda-s3-upload-policy"
-  role   = aws_iam_role.lambda_exec_role.id
+  role   = aws_iam_role.image_uploader_lambda_exec_role.id
   policy = jsonencode({
     Version = "2012-10-17",
     Statement = [
@@ -117,7 +117,7 @@ resource "aws_lambda_function" "image_uploader" {
   filename         = data.archive_file.lambda_zip.output_path
   source_code_hash = data.archive_file.lambda_zip.output_base64sha256
 
-  role    = aws_iam_role.lambda_exec_role.arn
+  role    = aws_iam_role.image_uploader_lambda_exec_role.arn
   handler = "handler.lambda_handler"
   runtime = "python3.11"
 
