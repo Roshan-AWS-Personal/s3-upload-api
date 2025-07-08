@@ -95,16 +95,56 @@ resource "aws_iam_role_policy" "lambda_s3_policy" {
         ],
         Resource = "*"
       },
-      {
+            {
         Effect = "Allow",
         Action = [
           "kms:Decrypt"
         ],
-        Resource = "arn:aws:kms:ap-southeast-2:338731010340:key/912753e2-776e-417c-a1e1-a479569eecc6"
+        Resource = aws_kms_key.lambda_key.arn
       }
     ]
   })
 }
+
+resource "aws_kms_key" "lambda_key" {
+  description         = "KMS key for encrypting Lambda environment variables"
+  enable_key_rotation = false
+
+  policy = jsonencode({
+    Version = "2012-10-17",
+    Id      = "key-lambda-upload",
+    Statement: [
+      {
+        Sid: "AllowLambdaToDecrypt",
+        Effect: "Allow",
+        Principal: {
+          AWS: aws_iam_role.image_uploader_lambda_exec_role.arn
+        },
+        Action: [
+          "kms:Decrypt",
+          "kms:GenerateDataKey"
+        ],
+        Resource: "*"
+      },
+      {
+        Sid: "AllowRootAccountFullAccess",
+        Effect: "Allow",
+        Principal: {
+          AWS: "arn:aws:iam::${data.aws_caller_identity.current.account_id}:root"
+        },
+        Action: "kms:*",
+        Resource: "*"
+      }
+    ]
+  })
+}
+
+resource "aws_kms_alias" "lambda_key_alias" {
+  name          = "alias/image-upload-lambda"
+  target_key_id = aws_kms_key.lambda_key.id
+}
+
+data "aws_caller_identity" "current" {}
 
 data "archive_file" "lambda_zip" {
   type        = "zip"
@@ -114,6 +154,7 @@ data "archive_file" "lambda_zip" {
 
 resource "aws_lambda_function" "image_uploader" {
   function_name = "image-uploader-dev"
+  kms_key_arn = aws_kms_key.lambda_key.arn
 
   filename         = data.archive_file.lambda_zip.output_path
   source_code_hash = data.archive_file.lambda_zip.output_base64sha256
@@ -129,5 +170,8 @@ resource "aws_lambda_function" "image_uploader" {
     }
   }
 
-  depends_on = [aws_iam_role_policy.lambda_s3_policy]
+  depends_on = [
+  aws_iam_role_policy.lambda_s3_policy,
+  aws_kms_key.lambda_key
+  ]
 }
