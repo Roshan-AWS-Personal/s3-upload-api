@@ -37,7 +37,12 @@ def lambda_handler(event, context):
         print("Authorization header:", auth_header)
         query = event.get("queryStringParameters") or {}
         filename = query.get("filename")
-        filesize = int(query.get('filesize', 0))
+        raw_size = query.get("filesize", 0)
+        try:
+            filesize = int(raw_size)
+        except (ValueError, TypeError):
+            logging.warning(f"Invalid filesize value: {raw_size}")
+            filesize = 0
         content_type = query.get("content_type")
 
         if not filename or not content_type:
