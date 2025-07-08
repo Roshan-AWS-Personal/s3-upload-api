@@ -130,16 +130,6 @@ resource "aws_api_gateway_integration_response" "upload_options_response" {
   ]
 }
 
-resource "aws_api_gateway_deployment" "deployment" {
-  rest_api_id = aws_api_gateway_rest_api.upload_api.id
-
-  depends_on = [
-    aws_api_gateway_integration.lambda_integration,
-    aws_api_gateway_integration_response.upload_get_response,
-    aws_api_gateway_integration_response.upload_options_response
-  ]
-}
-
 resource "aws_api_gateway_stage" "stage" {
   stage_name    = var.stage_name
   rest_api_id   = aws_api_gateway_rest_api.upload_api.id
@@ -152,7 +142,7 @@ resource "aws_api_gateway_deployment" "api_deployment" {
   triggers = {
     redeploy = sha1(jsonencode([
       aws_api_gateway_resource.upload_resource.id,
-      aws_api_gateway_method.put_method.id,
+      aws_api_gateway_method.get.id,
       aws_api_gateway_integration.lambda_integration.id
     ]))
   }
