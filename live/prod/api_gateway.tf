@@ -133,7 +133,7 @@ resource "aws_api_gateway_integration_response" "upload_options_response" {
 resource "aws_api_gateway_stage" "stage" {
   stage_name    = var.stage_name
   rest_api_id   = aws_api_gateway_rest_api.upload_api.id
-  deployment_id = aws_api_gateway_deployment.deployment.id
+  deployment_id = aws_api_gateway_deployment.api_deployment.id
 }
 
 resource "aws_api_gateway_deployment" "api_deployment" {
