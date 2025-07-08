@@ -95,7 +95,7 @@ def lambda_handler(event, context):
         "statusCode": 200,
         "body": json.dumps({
             "upload_id": upload_id,
-            "presigned_url": presigned_url
+            "upload_url": presigned_url
         }),
         "headers": {
             "Content-Type": "application/json",
