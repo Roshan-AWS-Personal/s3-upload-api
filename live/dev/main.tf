@@ -55,6 +55,29 @@ resource "aws_iam_role" "lambda_exec_role" {
   })
 }
 
+resource "aws_iam_policy" "dynamodb_write_policy" {
+  name        = "LambdaDynamoDBWritePolicy"
+  description = "Allow Lambda to write to file_upload_metadata table"
+
+  policy = jsonencode({
+    Version = "2012-10-17",
+    Statement = [
+      {
+        Action = [
+          "dynamodb:PutItem"
+        ],
+        Effect   = "Allow",
+        Resource = aws_dynamodb_table.file_upload_metadata.arn
+      }
+    ]
+  })
+}
+
+resource "aws_iam_role_policy_attachment" "lambda_dynamodb_attach" {
+  role       = aws_iam_role.image_uploader_exec_role.name
+  policy_arn = aws_iam_policy.dynamodb_write_policy.arn
+}
+
 # IAM Policy to allow Lambda to write to S3
 resource "aws_iam_role_policy" "lambda_s3_policy" {
   name   = "lambda-s3-upload-policy"

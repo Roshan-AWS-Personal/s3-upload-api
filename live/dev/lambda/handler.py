@@ -5,11 +5,14 @@ import json
 import logging
 import base64
 import re
+from datetime import datetime
 
 s3 = boto3.client("s3")
+dynamodb = boto3.resource("dynamodb")
 BUCKET_NAME = os.environ.get("BUCKET_NAME")
 MAX_FILE_SIZE = 5 * 1024 * 1024  # 5MB
 ALLOWED_IMAGE_TYPES = {"jpeg", "jpg", "png"}
+table = dynamodb.Table('file_upload_metadata')
 
 def lambda_handler(event, context):
     try:
@@ -34,6 +37,7 @@ def lambda_handler(event, context):
         print("Authorization header:", auth_header)
         query = event.get("queryStringParameters") or {}
         filename = query.get("filename")
+        filesize = int(query.get('filesize', 0))
         content_type = query.get("content_type")
 
         if not filename or not content_type:
@@ -60,7 +64,37 @@ def lambda_handler(event, context):
         )
 
         file_url = f"https://{BUCKET_NAME}.s3.amazonaws.com/{key}"
-        return response(200, {"upload_url": presigned_url, "file_url": file_url})
+        # Generate upload ID and timestamp
+        upload_id = str(uuid.uuid4())
+        timestamp = datetime.utcnow().isoformat() + "Z"
+        uploader_ip = event['requestContext']['identity']['sourceIp']
+        user_agent = event['headers'].get('User-Agent', 'Unknown')
+        # Save metadata to DynamoDB
+        item = {
+            'upload_id': upload_id,
+            'filename': filename,
+            'filesize': filesize,
+            's3_bucket': BUCKET_NAME,
+            's3_key': key,
+            'timestamp': timestamp,
+            'uploader_ip': uploader_ip,
+            'uploader_agent': user_agent,
+            'file_url': file_url,
+            'content_type': content_type,
+            'status': 'uploaded'
+        }
+        table.put_item(Item=item)
+        return {
+        "statusCode": 200,
+        "body": json.dumps({
+            "upload_id": upload_id,
+            "presigned_url": presigned_url
+        }),
+        "headers": {
+            "Content-Type": "application/json",
+            "Access-Control-Allow-Origin": "*"
+            }
+        }
 
     except Exception as e:
         logging.exception("Error generating presigned URL")
