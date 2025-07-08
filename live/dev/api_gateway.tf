@@ -141,9 +141,25 @@ resource "aws_api_gateway_deployment" "deployment" {
 }
 
 resource "aws_api_gateway_stage" "stage" {
-  stage_name    = "dev"
+  stage_name    = var.stage_name
   rest_api_id   = aws_api_gateway_rest_api.upload_api.id
   deployment_id = aws_api_gateway_deployment.deployment.id
+}
+
+resource "aws_api_gateway_deployment" "api_deployment" {
+  rest_api_id = aws_api_gateway_rest_api.upload_api.id
+
+  triggers = {
+    redeploy = sha1(jsonencode([
+      aws_api_gateway_resource.upload_resource.id,
+      aws_api_gateway_method.put_method.id,
+      aws_api_gateway_integration.lambda_integration.id
+    ]))
+  }
+
+  lifecycle {
+    create_before_destroy = true
+  }
 }
 
 output "upload_api_url" {
