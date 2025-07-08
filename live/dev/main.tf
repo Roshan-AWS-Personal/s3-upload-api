@@ -58,7 +58,7 @@ resource "aws_iam_role" "image_uploader_lambda_exec_role" {
 resource "aws_iam_role_policy" "dynamodb_write_policy" {
   name        = "LambdaDynamoDBWritePolicy"
   role       = aws_iam_role.image_uploader_lambda_exec_role.name
-  
+
   policy = jsonencode({
     Version = "2012-10-17",
     Statement = [
@@ -94,6 +94,13 @@ resource "aws_iam_role_policy" "lambda_s3_policy" {
           "logs:PutLogEvents"
         ],
         Resource = "*"
+      },
+      {
+        Effect = "Allow",
+        Action = [
+          "kms:Decrypt"
+        ],
+        Resource = "arn:aws:kms:ap-southeast-2:338731010340:key/912753e2-776e-417c-a1e1-a479569eecc6"
       }
     ]
   })

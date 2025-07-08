@@ -88,6 +88,8 @@ def lambda_handler(event, context):
             'content_type': content_type,
             'status': 'uploaded'
         }
+        print("Putting item in DynamoDB:", item)
+
         table.put_item(Item=item)
         return {
         "statusCode": 200,
