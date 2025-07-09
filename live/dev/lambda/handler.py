@@ -18,6 +18,8 @@ recipient_email = "venkatesanroshan@gmail.com"
 dynamodb = boto3.resource("dynamodb")
 table = dynamodb.Table('file_upload_metadata')
 
+logger = logging.getLogger()
+
 def lambda_handler(event, context):
     try:
         # --- Handle CORS preflight ---
@@ -91,9 +93,7 @@ def lambda_handler(event, context):
             'content_type': content_type,
             'status': 'uploaded'
         }
-        print("Putting item in DynamoDB:", item)
 
-        table.put_item(Item=item)
         subject = f"New Upload: {filename}"
         body_text = f"""\
         New image uploaded:
@@ -105,7 +105,6 @@ def lambda_handler(event, context):
         S3 URL: {file_url}
         Timestamp: {timestamp}
         """
-        logger = logging.getLogger()
         logger.setLevel(logging.INFO)
         try:
             logger.info("Sending SES email...")
@@ -121,7 +120,9 @@ def lambda_handler(event, context):
             logger.error("Error sending SES email: %s", str(e))
         
         logger.info("SES email sent successfully. Response: %s", response)
-
+        print("Putting item in DynamoDB:", item)
+        
+        table.put_item(Item=item)
         return {
         "statusCode": 200,
         "body": json.dumps({
