@@ -48,6 +48,7 @@
         const query = new URLSearchParams({
           filename: file.name,
           content_type: file.type
+          filesize: file.size.toString()
         });
 
         const response = await fetch(apiUrl + "?" + query.toString(), {
