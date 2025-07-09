@@ -36,9 +36,7 @@ def lambda_handler(event, context):
         auth_header = event["headers"].get("Authorization")
         if not auth_header or not is_authorized(auth_header):
             return response(401, "Unauthorized")
-
-        # --- Query parsing ---
-        print("Authorization header:", auth_header)
+        
         query = event.get("queryStringParameters") or {}
         filename = query.get("filename")
         raw_size = query.get("filesize", 0)
@@ -106,29 +104,26 @@ def lambda_handler(event, context):
         S3 URL: {file_url}
         Timestamp: {timestamp}
         """
-        ses.send_email(
-            Source=recipient_email,
-            Destination={"ToAddresses": [recipient_email]},
-            Message={
-                "Subject": {"Data": subject},
-                "Body": {
-                    "Text": {"Data": body_text}
+        logger = logging.getLogger()
+        logger.setLevel(logging.INFO)
+        try:
+            logger.info("Sending SES email...")
+            ses.send_email(...)  # same as above
+        except Exception as e:
+            logger.error("Error sending SES email: %s", str(e))
+
+            return {
+            "statusCode": 200,
+            "body": json.dumps({
+                "upload_id": upload_id,
+                "upload_url": presigned_url
+            }),
+            "headers": {
+                "Content-Type": "application/json",
+                "Access-Control-Allow-Origin": "*"
                 }
             }
-        )
-
-        return {
-        "statusCode": 200,
-        "body": json.dumps({
-            "upload_id": upload_id,
-            "upload_url": presigned_url
-        }),
-        "headers": {
-            "Content-Type": "application/json",
-            "Access-Control-Allow-Origin": "*"
-            }
-        }
-        
+    
 
     except Exception as e:
         logging.exception("Error generating presigned URL")
