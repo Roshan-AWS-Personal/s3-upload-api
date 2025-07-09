@@ -108,30 +108,30 @@ def lambda_handler(event, context):
         logger.setLevel(logging.INFO)
         try:
             logger.info("Sending SES email...")
-            ses.send_email(
+            response = ses.send_email(
             Source=recipient_email,
             Destination={"ToAddresses": [recipient_email]},
             Message={
                 "Subject": {"Data": subject},
-                "Body": {
-                    "Text": {"Data": body_text}
+                "Body": {"Text": {"Data": body_text}}
                 }
-            }
-        )  # same as above
+            )  # same as above
         except Exception as e:
             logger.error("Error sending SES email: %s", str(e))
+        
+        logger.info("SES email sent successfully. Response: %s", response)
 
-            return {
-            "statusCode": 200,
-            "body": json.dumps({
-                "upload_id": upload_id,
-                "upload_url": presigned_url
-            }),
-            "headers": {
-                "Content-Type": "application/json",
-                "Access-Control-Allow-Origin": "*"
-                }
+        return {
+        "statusCode": 200,
+        "body": json.dumps({
+            "upload_id": upload_id,
+            "upload_url": presigned_url
+        }),
+        "headers": {
+            "Content-Type": "application/json",
+            "Access-Control-Allow-Origin": "*"
             }
+        }
     
 
     except Exception as e:
