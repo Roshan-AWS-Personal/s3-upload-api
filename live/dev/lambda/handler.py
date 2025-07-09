@@ -108,7 +108,16 @@ def lambda_handler(event, context):
         logger.setLevel(logging.INFO)
         try:
             logger.info("Sending SES email...")
-            ses.send_email(...)  # same as above
+            ses.send_email(
+            Source=recipient_email,
+            Destination={"ToAddresses": [recipient_email]},
+            Message={
+                "Subject": {"Data": subject},
+                "Body": {
+                    "Text": {"Data": body_text}
+                }
+            }
+        )  # same as above
         except Exception as e:
             logger.error("Error sending SES email: %s", str(e))
 
