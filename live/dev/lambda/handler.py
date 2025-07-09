@@ -38,6 +38,7 @@ def lambda_handler(event, context):
             return response(401, "Unauthorized")
         
         query = event.get("queryStringParameters") or {}
+        logging.info(f"Image Data: {query}")
         filename = query.get("filename")
         raw_size = query.get("filesize", 0)
         try:
