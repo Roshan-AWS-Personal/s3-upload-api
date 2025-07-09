@@ -37,10 +37,8 @@ def lambda_handler(event, context):
         # --- Auth check ---
         auth_header = event["headers"].get("Authorization")
         if not auth_header or not is_authorized(auth_header):
-            return response(401, "Unauthorized")
-        
+            return response(401, "Unauthorized")      
         query = event.get("queryStringParameters") or {}
-        logger.info("Image Query Params: %s", query)
         filename = query.get("filename")
         raw_size = query.get("filesize", 0)
         try:
