@@ -8,10 +8,14 @@ import re
 from datetime import datetime
 
 s3 = boto3.client("s3")
-dynamodb = boto3.resource("dynamodb")
 BUCKET_NAME = os.environ.get("BUCKET_NAME")
 MAX_FILE_SIZE = 5 * 1024 * 1024  # 5MB
 ALLOWED_IMAGE_TYPES = {"jpeg", "jpg", "png"}
+
+ses = boto3.client('ses')
+recipient_email = "venkatesanroshan@gmail.com"
+
+dynamodb = boto3.resource("dynamodb")
 table = dynamodb.Table('file_upload_metadata')
 
 def lambda_handler(event, context):
@@ -91,6 +95,28 @@ def lambda_handler(event, context):
         print("Putting item in DynamoDB:", item)
 
         table.put_item(Item=item)
+        subject = f"New Upload: {filename}"
+        body_text = f"""\
+        New image uploaded:
+
+        Filename: {filename}
+        Size: {filesize} bytes
+        Uploader IP: {uploader_ip}
+        User Agent: {user_agent}
+        S3 URL: {file_url}
+        Timestamp: {timestamp}
+        """
+        ses.send_email(
+            Source=recipient_email,
+            Destination={"ToAddresses": [recipient_email]},
+            Message={
+                "Subject": {"Data": subject},
+                "Body": {
+                    "Text": {"Data": body_text}
+                }
+            }
+        )
+
         return {
         "statusCode": 200,
         "body": json.dumps({
@@ -102,6 +128,7 @@ def lambda_handler(event, context):
             "Access-Control-Allow-Origin": "*"
             }
         }
+        
 
     except Exception as e:
         logging.exception("Error generating presigned URL")
