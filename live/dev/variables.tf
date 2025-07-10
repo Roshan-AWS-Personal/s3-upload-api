@@ -20,3 +20,8 @@ variable "upload_api_secret" {
   type        = string
   sensitive   = true
 }
+variable "stage_name" {
+  description = "The stage name for the API Gateway"
+  type        = string
+  default     = "dev"
+}

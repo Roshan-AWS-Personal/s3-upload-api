@@ -5,11 +5,20 @@ import json
 import logging
 import base64
 import re
+from datetime import datetime
 
 s3 = boto3.client("s3")
 BUCKET_NAME = os.environ.get("BUCKET_NAME")
 MAX_FILE_SIZE = 5 * 1024 * 1024  # 5MB
 ALLOWED_IMAGE_TYPES = {"jpeg", "jpg", "png"}
+
+ses = boto3.client('ses')
+recipient_email = "venkatesanroshan@gmail.com"
+
+dynamodb = boto3.resource("dynamodb")
+table = dynamodb.Table('file_upload_metadata')
+
+logger = logging.getLogger()
 
 def lambda_handler(event, context):
     try:
@@ -28,12 +37,15 @@ def lambda_handler(event, context):
         # --- Auth check ---
         auth_header = event["headers"].get("Authorization")
         if not auth_header or not is_authorized(auth_header):
-            return response(401, "Unauthorized")
-
-        # --- Query parsing ---
-        print("Authorization header:", auth_header)
+            return response(401, "Unauthorized")      
         query = event.get("queryStringParameters") or {}
         filename = query.get("filename")
+        raw_size = query.get("filesize", 0)
+        try:
+            filesize = int(raw_size)
+        except (ValueError, TypeError):
+            logging.warning(f"Invalid filesize value: {raw_size}")
+            filesize = 0
         content_type = query.get("content_type")
 
         if not filename or not content_type:
@@ -60,7 +72,67 @@ def lambda_handler(event, context):
         )
 
         file_url = f"https://{BUCKET_NAME}.s3.amazonaws.com/{key}"
-        return response(200, {"upload_url": presigned_url, "file_url": file_url})
+        # Generate upload ID and timestamp
+        upload_id = str(uuid.uuid4())
+        timestamp = datetime.utcnow().isoformat() + "Z"
+        uploader_ip = event['requestContext']['identity']['sourceIp']
+        user_agent = event['headers'].get('User-Agent', 'Unknown')
+        # Save metadata to DynamoDB
+        item = {
+            'upload_id': upload_id,
+            'filename': filename,
+            'filesize': filesize,
+            's3_bucket': BUCKET_NAME,
+            's3_key': key,
+            'timestamp': timestamp,
+            'uploader_ip': uploader_ip,
+            'uploader_agent': user_agent,
+            'file_url': file_url,
+            'content_type': content_type,
+            'status': 'uploaded'
+        }
+
+        subject = f"New Upload: {filename}"
+        body_text = f"""\
+        New image uploaded:
+
+        Filename: {filename}
+        Size: {filesize} bytes
+        Uploader IP: {uploader_ip}
+        User Agent: {user_agent}
+        S3 URL: {file_url}
+        Timestamp: {timestamp}
+        """
+        logger.setLevel(logging.INFO)
+        try:
+            logger.info("Sending SES email...")
+            response = ses.send_email(
+            Source=recipient_email,
+            Destination={"ToAddresses": [recipient_email]},
+            Message={
+                "Subject": {"Data": subject},
+                "Body": {"Text": {"Data": body_text}}
+                }
+            )  # same as above
+        except Exception as e:
+            logger.error("Error sending SES email: %s", str(e))
+        
+        logger.info("SES email sent successfully. Response: %s", response)
+        print("Putting item in DynamoDB:", item)
+        
+        table.put_item(Item=item)
+        return {
+        "statusCode": 200,
+        "body": json.dumps({
+            "upload_id": upload_id,
+            "upload_url": presigned_url
+        }),
+        "headers": {
+            "Content-Type": "application/json",
+            "Access-Control-Allow-Origin": "*"
+            }
+        }
+    
 
     except Exception as e:
         logging.exception("Error generating presigned URL")

@@ -130,20 +130,29 @@ resource "aws_api_gateway_integration_response" "upload_options_response" {
   ]
 }
 
-resource "aws_api_gateway_deployment" "deployment" {
-  rest_api_id = aws_api_gateway_rest_api.upload_api.id
-
-  depends_on = [
-    aws_api_gateway_integration.lambda_integration,
-    aws_api_gateway_integration_response.upload_get_response,
-    aws_api_gateway_integration_response.upload_options_response
+resource "aws_api_gateway_stage" "stage" {
+  stage_name    = var.stage_name
+  rest_api_id   = aws_api_gateway_rest_api.upload_api.id
+  deployment_id = aws_api_gateway_deployment.api_deployment.id
+    depends_on = [
+    aws_api_gateway_deployment.api_deployment
   ]
 }
 
-resource "aws_api_gateway_stage" "stage" {
-  stage_name    = "prod"
-  rest_api_id   = aws_api_gateway_rest_api.upload_api.id
-  deployment_id = aws_api_gateway_deployment.deployment.id
+resource "aws_api_gateway_deployment" "api_deployment" {
+  rest_api_id = aws_api_gateway_rest_api.upload_api.id
+
+  triggers = {
+    redeploy = sha1(jsonencode([
+      aws_api_gateway_resource.upload.id,
+      aws_api_gateway_method.get_upload_url_method.id,
+      aws_api_gateway_integration.lambda_integration.id
+    ]))
+  }
+
+  lifecycle {
+    create_before_destroy = true
+  }
 }
 
 output "upload_api_url" {

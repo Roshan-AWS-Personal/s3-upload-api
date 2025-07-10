@@ -43,11 +43,12 @@
       if (!file) return alert("Please choose a file.");
 
       try {
-        status.textContent = "Requesting upload URL...";
+        urlDisplay.textContent = "Requesting upload URL...";
         const apiUrl = "https://n3bcr23wm1.execute-api.ap-southeast-2.amazonaws.com/dev/upload";
         const query = new URLSearchParams({
           filename: file.name,
-          content_type: file.type
+          content_type: file.type,
+          filesize: file.size.toString()
         });
 
         const response = await fetch(apiUrl + "?" + query.toString(), {
