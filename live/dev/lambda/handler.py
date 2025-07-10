@@ -18,6 +18,9 @@ recipient_email = "venkatesanroshan@gmail.com"
 dynamodb = boto3.resource("dynamodb")
 table = dynamodb.Table('file_upload_metadata')
 
+IMAGE_EXTENSIONS = {"jpg", "jpeg", "png", "gif"}
+DOCUMENT_EXTENSIONS = {"pdf", "doc", "docx", "txt"}
+
 logger = logging.getLogger()
 
 def lambda_handler(event, context):
@@ -165,3 +168,12 @@ def response(status_code, body):
         "body": json.dumps(body if isinstance(body, dict) else {"message": body})
     }
 
+
+def get_bucket_for_file(filename):
+    ext = filename.rsplit('.', 1)[-1].lower()
+    if ext in IMAGE_EXTENSIONS:
+        return os.environ.get("IMAGES_BUCKET")
+    elif ext in DOCUMENT_EXTENSIONS:
+        return os.environ.get("DOCUMENTS_BUCKET")
+    else:
+        raise ValueError(f"Unsupported file type: {ext}")

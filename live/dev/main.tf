@@ -17,6 +17,15 @@ resource "aws_s3_bucket" "image_upload_bucket" {
   }
 }
 
+resource "aws_s3_bucket" "documents_bucket" {
+  bucket = "s3-upload-documents"
+  force_destroy = true
+    tags = {
+    Name = "document-upload-api-bucket"
+  }
+}
+
+
 resource "aws_s3_bucket_cors_configuration" "upload_bucket_cors" {
   bucket = aws_s3_bucket.image_upload_bucket.id
 
@@ -84,7 +93,10 @@ resource "aws_iam_role_policy" "lambda_s3_policy" {
         Action = [
           "s3:PutObject"
         ],
-        Resource = "${aws_s3_bucket.image_upload_bucket.arn}/*"
+        Resource = [
+          "${aws_s3_bucket.images_bucket.arn}/*",
+          "${aws_s3_bucket.documents_bucket.arn}/*"
+        ]
       },
       {
         Effect = "Allow",
@@ -185,6 +197,8 @@ resource "aws_lambda_function" "image_uploader" {
   environment {
     variables = {
       BUCKET_NAME = aws_s3_bucket.image_upload_bucket.bucket
+      DOCUMENTS_BUCKET = aws_s3_bucket.documents_bucket.bucket
+      IMAGES_BUCKET   = aws_s3_bucket.documents_bucket.bucket
       UPLOAD_API_SECRET = var.upload_api_secret
     }
   }
