@@ -44,6 +44,7 @@ data "template_file" "index_html" {
   template = file("${path.module}/frontend/index.html.tpl")
   vars = {
     BEARER_TOKEN = var.upload_api_secret
+    API_URL  = var.upload_api_url # You’ll add this variable below
   }
 }
 

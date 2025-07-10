@@ -25,3 +25,9 @@ variable "stage_name" {
   type        = string
   default     = "dev"
 }
+
+variable "upload_api_url" {
+  description = "URL for the API Gateway"
+  type        = string
+  default     = "dev"
+}
