@@ -52,7 +52,7 @@
 
       for (const file of files) {
         const status = document.createElement("p");
-        status.textContent = `Uploading ${file.name}...`;
+        status.textContent = "Uploading " + file.name + "...";
         urlDisplay.appendChild(status);
 
         try {
@@ -70,12 +70,13 @@
           });
 
           if (!response.ok) {
-            status.textContent = `❌ Failed to get upload URL for ${file.name}`;
+            status.textContent = "❌ Failed to get upload URL for " + file.name;
             status.classList.add("error");
             continue;
           }
 
-          const { upload_url } = await response.json();
+          const data = await response.json();
+          const upload_url = data.upload_url;
 
           const uploadRes = await fetch(upload_url, {
             method: 'PUT',
@@ -87,11 +88,11 @@
             status.innerHTML = "✅ <strong>" + file.name + ":</strong> <a href=\"" + cleanUrl + "\" target=\"_blank\">" + cleanUrl + "</a>";
             status.classList.add("success");
           } else {
-            status.textContent = `❌ Upload failed for ${file.name}`;
+            status.textContent = "❌ Upload failed for " + file.name;
             status.classList.add("error");
           }
         } catch (err) {
-          status.textContent = `❌ Error uploading ${file.name}: ${err.message}`;
+          status.textContent = "❌ Error uploading " + file.name + ": " + err.message;
           status.classList.add("error");
         }
       }
