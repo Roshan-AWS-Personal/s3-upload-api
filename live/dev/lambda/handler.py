@@ -8,7 +8,6 @@ import re
 from datetime import datetime
 
 s3 = boto3.client("s3")
-BUCKET_NAME = os.environ.get("BUCKET_NAME")
 MAX_FILE_SIZE = 5 * 1024 * 1024  # 5MB
 ALLOWED_IMAGE_TYPES = {"jpeg", "jpg", "png"}
 
@@ -56,11 +55,12 @@ def lambda_handler(event, context):
 
         # --- S3 Key Generation ---
         key = f"{sanitize_filename(filename)}"
-
+        BUCKET_NAME = get_bucket_for_file(filename)
+        logger.info(f"Using bucket: {BUCKET_NAME} for file: {filename}")
         presigned_url = s3.generate_presigned_url(
             ClientMethod='put_object',
             Params={
-                'Bucket': get_bucket_for_file(filename),
+                'Bucket': BUCKET_NAME,
                 'Key': key,
                 'ContentType': content_type
             },
