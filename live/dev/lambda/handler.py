@@ -113,6 +113,7 @@ def lambda_handler(event, context):
         uploader_ip = event['requestContext']['identity']['sourceIp']
         user_agent = event['headers'].get('User-Agent', 'Unknown')
 
+        # Do not write to DynamoDB yet — wait for successful upload later (external confirmation)
         item = {
             'upload_id': upload_id,
             'filename': filename,
@@ -124,12 +125,12 @@ def lambda_handler(event, context):
             'uploader_agent': user_agent,
             'file_url': file_url,
             'content_type': content_type,
-            'status': 'uploaded'
+            'status': 'presigned'
         }
 
-        subject = f"New Upload: {filename}"
+        subject = f"New Upload URL Issued: {filename}"
         body_text = f"""\
-        New image uploaded:
+        A new presigned URL was issued:
 
         Filename: {filename}
         Size: {filesize} bytes
@@ -154,8 +155,7 @@ def lambda_handler(event, context):
         except Exception as e:
             logger.error("Error sending SES email: %s", str(e))
 
-        print("Putting item in DynamoDB:", item)
-        table.put_item(Item=item)
+        print("Presigned URL issued (not yet uploaded):", item)
 
         return {
             "statusCode": 200,
