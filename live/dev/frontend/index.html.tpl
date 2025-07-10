@@ -68,9 +68,6 @@
 
         await fetch(uploadUrl, {
           method: 'PUT',
-          headers: {
-            'Content-Type': file.type
-          },
           body: file
         });
 
