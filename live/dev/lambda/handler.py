@@ -60,7 +60,7 @@ def lambda_handler(event, context):
         presigned_url = s3.generate_presigned_url(
             ClientMethod='put_object',
             Params={
-                'Bucket': BUCKET_NAME,
+                'Bucket': get_bucket_for_file(filename),
                 'Key': key,
                 'ContentType': content_type
             },
