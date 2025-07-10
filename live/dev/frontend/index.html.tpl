@@ -1,28 +1,32 @@
+<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Image Upload</title>
+  <title>File Upload</title>
   <style>
     body { font-family: sans-serif; margin: 2rem; }
     .container { max-width: 600px; margin: auto; }
     #preview { display: block; margin-top: 1rem; max-width: 100%; }
     #urlDisplay { margin-top: 1rem; font-weight: bold; }
+    .success { color: green; }
+    .error { color: red; }
   </style>
 </head>
 <body>
   <div class="container">
-    <h2>Upload an Image</h2>
+    <h2>Upload Files</h2>
     <form id="uploadForm">
-      <input type="file" name="file" id="fileInput" accept="image/*" required />
+      <input type="file" id="fileInput" multiple />
       <button type="submit">Upload</button>
     </form>
-    <img id="preview" />
+    <img id="preview" style="display: none;" />
     <div id="urlDisplay"></div>
   </div>
 
   <script>
     const BEARER_TOKEN = "__API_KEY__";
+    const API_URL = "https://n3bcr23wm1.execute-api.ap-southeast-2.amazonaws.com/dev/upload";
 
     const form = document.getElementById('uploadForm');
     const fileInput = document.getElementById('fileInput');
@@ -31,49 +35,65 @@
 
     fileInput.addEventListener('change', () => {
       const file = fileInput.files[0];
-      if (file) {
+      if (file && file.type.startsWith("image/")) {
         preview.src = URL.createObjectURL(file);
         preview.style.display = 'block';
+      } else {
+        preview.style.display = 'none';
       }
     });
 
     form.addEventListener('submit', async (e) => {
       e.preventDefault();
-      const file = fileInput.files[0];
-      if (!file) return alert("Please choose a file.");
+      const files = fileInput.files;
+      if (!files.length) return alert("Please choose one or more files.");
 
-      try {
-        urlDisplay.textContent = "Requesting upload URL...";
-        const apiUrl = "https://n3bcr23wm1.execute-api.ap-southeast-2.amazonaws.com/dev/upload";
-        const query = new URLSearchParams({
-          filename: file.name,
-          content_type: file.type,
-          filesize: file.size.toString()
-        });
+      urlDisplay.innerHTML = "";
 
-        const response = await fetch(apiUrl + "?" + query.toString(), {
-          method: 'GET',
-          headers: {
-            "Authorization": BEARER_TOKEN
+      for (const file of files) {
+        const status = document.createElement("p");
+        status.textContent = `Uploading ${file.name}...`;
+        urlDisplay.appendChild(status);
+
+        try {
+          const query = new URLSearchParams({
+            filename: file.name,
+            content_type: file.type,
+            filesize: file.size.toString()
+          });
+
+          const response = await fetch(API_URL + "?" + query.toString(), {
+            method: 'GET',
+            headers: {
+              "Authorization": BEARER_TOKEN
+            }
+          });
+
+          if (!response.ok) {
+            status.textContent = `❌ Failed to get upload URL for ${file.name}`;
+            status.classList.add("error");
+            continue;
           }
-        });
-        
-        if (!response.ok) {
-          urlDisplay.textContent = "Failed to get upload URL.";
-          return;
+
+          const { upload_url } = await response.json();
+
+          const uploadRes = await fetch(upload_url, {
+            method: 'PUT',
+            body: file
+          });
+
+          if (uploadRes.ok) {
+            const cleanUrl = upload_url.split("?")[0];
+            status.innerHTML = `✅ <strong>${file.name}:</strong> <a href="${cleanUrl}" target="_blank">${cleanUrl}</a>`;
+            status.classList.add("success");
+          } else {
+            status.textContent = `❌ Upload failed for ${file.name}`;
+            status.classList.add("error");
+          }
+        } catch (err) {
+          status.textContent = `❌ Error uploading ${file.name}: ${err.message}`;
+          status.classList.add("error");
         }
-
-        const data = await response.json();
-        const uploadUrl = data.upload_url;
-
-        await fetch(uploadUrl, {
-          method: 'PUT',
-          body: file
-        });
-
-        urlDisplay.innerHTML = '<p><strong>Uploaded URL:</strong> <a href="' + uploadUrl.split("?")[0] + '" target="_blank">' + uploadUrl.split("?")[0] + '</a></p>';
-      } catch (err) {
-        urlDisplay.textContent = 'Error: ' + err.message;
       }
     });
   </script>
