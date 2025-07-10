@@ -54,13 +54,6 @@ def lambda_handler(event, context):
         if not filename or not content_type:
             return response(400, "Missing filename or content_type")
 
-        if not content_type.startswith("image/"):
-            return response(400, "Only image uploads are allowed")
-
-        ext = filename.rsplit(".", 1)[-1].lower()
-        if ext not in ALLOWED_IMAGE_TYPES:
-            return response(400, f"Unsupported image type: {ext}")
-
         # --- S3 Key Generation ---
         key = f"{sanitize_filename(filename)}"
 
