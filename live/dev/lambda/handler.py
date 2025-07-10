@@ -62,7 +62,6 @@ def lambda_handler(event, context):
             Params={
                 'Bucket': BUCKET_NAME,
                 'Key': key,
-                'ContentType': content_type
             },
             ExpiresIn=300
         )
