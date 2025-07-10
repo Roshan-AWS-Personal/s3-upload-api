@@ -94,7 +94,7 @@ resource "aws_iam_role_policy" "lambda_s3_policy" {
           "s3:PutObject"
         ],
         Resource = [
-          "${aws_s3_bucket.images_bucket.arn}/*",
+          "${aws_s3_bucket.image_upload_bucket.arn}/*",
           "${aws_s3_bucket.documents_bucket.arn}/*"
         ]
       },
