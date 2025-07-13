@@ -25,8 +25,10 @@ def lambda_handler(event, context):
             ext = filename.rsplit(".", 1)[-1].lower()
             file_type = infer_type(ext)
 
+            upload_id = str(uuid.uuid4())
+
             item = {
-                "upload_id": key,  # Using key as id if upload_id not generated elsewhere
+                "upload_id": upload_id,  # Using key as id if upload_id not generated elsewhere
                 "filename": filename,
                 "s3_bucket": bucket,
                 "s3_key": key,
