@@ -74,7 +74,8 @@ resource "aws_lambda_permission" "allow_s3_trigger" {
   action        = "lambda:InvokeFunction"
   function_name = aws_lambda_function.s3_event_logger.function_name
   principal     = "s3.amazonaws.com"
-  source_arn    = aws_s3_bucket.images_bucket.arn
+  source_arn    = aws_s3_bucket.image_upload_bucket.arn
+
 }
 
 resource "aws_s3_bucket_notification" "documents_trigger" {
