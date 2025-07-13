@@ -11,16 +11,17 @@ on:
         options:
           - dev
           - prod
-    # You can also add a push trigger for 'dev' if desired
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
 
     env:
-      AWS_REGION: ap-southeast-2  # Or pull from secrets if env-specific
-      LAMBDA_FUNCTION_NAME_DEV: image-uploader-dev
-      LAMBDA_FUNCTION_NAME_PROD: image-uploader-prod
+      AWS_REGION: ap-southeast-2
+      IMAGE_UPLOADER_DEV: image-uploader-dev
+      IMAGE_UPLOADER_PROD: image-uploader-prod
+      S3_EVENT_LOGGER_DEV: s3-event-logger-dev
+      S3_EVENT_LOGGER_PROD: s3-event-logger-prod  # same for prod, change if needed
 
     steps:
       - name: Checkout code
@@ -31,27 +32,42 @@ jobs:
           if [[ "${{ github.event.inputs.environment }}" == "dev" ]]; then
             echo "AWS_ACCESS_KEY_ID=${{ secrets.AWS_ACCESS_KEY_ID_DEV }}" >> $GITHUB_ENV
             echo "AWS_SECRET_ACCESS_KEY=${{ secrets.AWS_SECRET_ACCESS_KEY_DEV }}" >> $GITHUB_ENV
-            echo "LAMBDA_FUNCTION_NAME=${{ env.LAMBDA_FUNCTION_NAME_DEV }}" >> $GITHUB_ENV
+            echo "IMAGE_UPLOADER_FN=${{ env.IMAGE_UPLOADER_DEV }}" >> $GITHUB_ENV
+            echo "EVENT_LOGGER_FN=${{ env.S3_EVENT_LOGGER_DEV }}" >> $GITHUB_ENV
           else
             echo "AWS_ACCESS_KEY_ID=${{ secrets.AWS_ACCESS_KEY_ID_PROD }}" >> $GITHUB_ENV
             echo "AWS_SECRET_ACCESS_KEY=${{ secrets.AWS_SECRET_ACCESS_KEY_PROD }}" >> $GITHUB_ENV
-            echo "LAMBDA_FUNCTION_NAME=${{ env.LAMBDA_FUNCTION_NAME_PROD }}" >> $GITHUB_ENV
+            echo "IMAGE_UPLOADER_FN=${{ env.IMAGE_UPLOADER_PROD }}" >> $GITHUB_ENV
+            echo "EVENT_LOGGER_FN=${{ env.S3_EVENT_LOGGER_PROD }}" >> $GITHUB_ENV
           fi
 
-      - name: Set up AWS CLI
+      - name: Configure AWS CLI
         uses: aws-actions/configure-aws-credentials@v2
         with:
           aws-access-key-id: ${{ env.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ env.AWS_SECRET_ACCESS_KEY }}
           aws-region: ${{ env.AWS_REGION }}
 
-      - name: Zip Lambda code
+      - name: Zip uploader Lambda
         run: |
-          cd lambda
-          zip -r ../lambda.zip .
+          cd lambda/upload_handler
+          zip -r ../../upload_handler.zip .
+          cd ../..
 
-      - name: Deploy to AWS Lambda
+      - name: Zip event logger Lambda
+        run: |
+          cd lambda/event_logger
+          zip -r ../../event_logger.zip .
+          cd ../..
+
+      - name: Deploy uploader Lambda
         run: |
           aws lambda update-function-code \
-            --function-name "$LAMBDA_FUNCTION_NAME" \
-            --zip-file fileb://lambda.zip
+            --function-name "$IMAGE_UPLOADER_FN" \
+            --zip-file fileb://upload_handler.zip
+
+      - name: Deploy event logger Lambda
+        run: |
+          aws lambda update-function-code \
+            --function-name "$EVENT_LOGGER_FN" \
+            --zip-file fileb://event_logger.zip

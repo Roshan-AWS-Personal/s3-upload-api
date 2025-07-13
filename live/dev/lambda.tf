@@ -44,11 +44,18 @@ resource "aws_lambda_function" "s3_event_logger" {
   }
 }
 
+# For the event logger Lambda (from event_logger.py)
 data "archive_file" "s3_event_lambda_zip" {
   type        = "zip"
-  source_dir  = "${path.module}/../lambda"
-  output_path = "${path.module}/s3_event_logger.zip"
-  output_base64sha256 = filebase64sha256("${path.module}/s3_event_logger.zip")
+  source_dir  = "${path.module}/lambda/event_logger"
+  output_path = "${path.module}/zips/s3_event_logger.zip"
+}
+
+# For the uploader Lambda (from upload_handler.py)
+data "archive_file" "upload_lambda_zip" {
+  type        = "zip"
+  source_dir  = "${path.module}/lambda/upload_handler"
+  output_path = "${path.module}/zips/upload_handler.zip"
 }
 
 resource "aws_s3_bucket_notification" "images_trigger" {
@@ -129,19 +136,12 @@ resource "aws_kms_alias" "lambda_key_alias" {
 
 data "aws_caller_identity" "current" {}
 
-data "archive_file" "lambda_zip" {
-  type        = "zip"
-  source_dir  = "${path.module}/lambda"
-  output_path = "${path.module}/lambda.zip"
-  output_base64sha256 = filebase64sha256("${path.module}/lambda.zip")
-}
-
 resource "aws_lambda_function" "image_uploader" {
   function_name = "image-uploader-dev"
   kms_key_arn   = aws_kms_key.lambda_key.arn
 
-  filename         = data.archive_file.lambda_zip.output_path
-  source_code_hash = data.archive_file.lambda_zip.output_base64sha256
+  filename         = data.archive_file.upload_lambda_zip.output_path
+  source_code_hash = data.archive_file.upload_lambda_zip.output_base64sha256
 
   role    = aws_iam_role.image_uploader_lambda_exec_role.arn
   handler = "upload_handler.lambda_handler"
