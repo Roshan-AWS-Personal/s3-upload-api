@@ -90,19 +90,38 @@
           const data = await response.json();
           const upload_url = data.upload_url;
 
-          const uploadRes = await fetch(upload_url, {
-            method: 'PUT',
-            body: file
-          });
+          await new Promise((resolve, reject) => {
+            const xhr = new XMLHttpRequest();
+            xhr.open("PUT", upload_url, true);
 
-          if (uploadRes.ok) {
-            const cleanUrl = upload_url.split("?")[0];
-            status.innerHTML = "✅ <strong>" + file.name + ":</strong> <a href=\"" + cleanUrl + "\" target=\"_blank\">" + cleanUrl + "</a>";
-            status.classList.add("success");
-          } else {
-            status.textContent = "❌ Upload failed for " + file.name;
-            status.classList.add("error");
-          }
+            xhr.upload.onprogress = function (e) {
+              if (e.lengthComputable) {
+                progress.value = Math.round((e.loaded / e.total) * 100);
+              }
+            };
+
+            xhr.onload = function () {
+              if (xhr.status >= 200 && xhr.status < 300) {
+                const cleanUrl = upload_url.split("?")[0];
+                status.innerHTML = "✅ <strong>" + file.name + ":</strong> <a href=\"" + cleanUrl + "\" target=\"_blank\">" + cleanUrl + "</a>";
+                status.classList.add("success");
+                progress.value = 100;
+                resolve();
+              } else {
+                status.textContent = "❌ Upload failed for " + file.name;
+                status.classList.add("error");
+                reject(new Error("Upload failed"));
+              }
+            };
+
+            xhr.onerror = function () {
+              status.textContent = "❌ Upload failed for " + file.name;
+              status.classList.add("error");
+              reject(new Error("Network error"));
+            };
+
+            xhr.send(file);
+          });
         } catch (err) {
           status.textContent = "❌ Error uploading " + file.name + ": " + err.message;
           status.classList.add("error");
