@@ -31,3 +31,19 @@ variable "upload_api_url" {
   type        = string
   default     = "dev"
 }
+
+variable "login_redirect_url" {
+  description = "Frontend URL to redirect after successful login"
+  type        = string
+}
+
+variable "logout_redirect_url" {
+  description = "Frontend URL to redirect after logout"
+  type        = string
+}
+
+variable "aws_region" {
+  description = "AWS region"
+  type        = string
+}
+
