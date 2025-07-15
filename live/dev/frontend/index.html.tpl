@@ -26,7 +26,7 @@
 
   <script>
     const BEARER_TOKEN = "__API_KEY__";
-    const API_URL = "https://n3bcr23wm1.execute-api.ap-southeast-2.amazonaws.com/dev/upload";
+    const API_URL = "__API_URL__";
 
     const form = document.getElementById('uploadForm');
     const fileInput = document.getElementById('fileInput');
