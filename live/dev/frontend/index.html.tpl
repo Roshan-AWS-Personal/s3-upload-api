@@ -27,8 +27,8 @@
   </div>
 
   <script>
-    const BEARER_TOKEN = "__API_KEY__";
-    const API_URL = "https://n3bcr23wm1.execute-api.ap-southeast-2.amazonaws.com/dev/upload";
+    const BEARER_TOKEN = "${BEARER_TOKEN}";
+    const API_URL = "${API_URL}";
 
     const form = document.getElementById('uploadForm');
     const fileInput = document.getElementById('fileInput');
@@ -90,48 +90,25 @@
           const data = await response.json();
           const upload_url = data.upload_url;
 
-          await uploadFileWithProgress(file, upload_url, progress, status);
+          const uploadRes = await fetch(upload_url, {
+            method: 'PUT',
+            body: file
+          });
+
+          if (uploadRes.ok) {
+            const cleanUrl = upload_url.split("?")[0];
+            status.innerHTML = "✅ <strong>" + file.name + ":</strong> <a href=\"" + cleanUrl + "\" target=\"_blank\">" + cleanUrl + "</a>";
+            status.classList.add("success");
+          } else {
+            status.textContent = "❌ Upload failed for " + file.name;
+            status.classList.add("error");
+          }
         } catch (err) {
           status.textContent = "❌ Error uploading " + file.name + ": " + err.message;
           status.classList.add("error");
         }
       }
     });
-
-    function uploadFileWithProgress(file, uploadUrl, progressElem, statusElem) {
-      return new Promise((resolve, reject) => {
-        const xhr = new XMLHttpRequest();
-        xhr.open("PUT", uploadUrl, true);
-
-        xhr.upload.onprogress = (event) => {
-          if (event.lengthComputable) {
-            const percent = (event.loaded / event.total) * 100;
-            progressElem.value = percent;
-          }
-        };
-
-        xhr.onload = () => {
-          if (xhr.status === 200) {
-            const cleanUrl = uploadUrl.split("?")[0];
-            statusElem.innerHTML = `✅ <strong>${file.name}:</strong> <a href="${cleanUrl}" target="_blank">${cleanUrl}</a>`;
-            statusElem.classList.add("success");
-            resolve();
-          } else {
-            statusElem.textContent = "❌ Upload failed for " + file.name;
-            statusElem.classList.add("error");
-            reject(new Error("Upload failed"));
-          }
-        };
-
-        xhr.onerror = () => {
-          statusElem.textContent = "❌ Upload error for " + file.name;
-          statusElem.classList.add("error");
-          reject(new Error("XHR error"));
-        };
-
-        xhr.send(file);
-      });
-    }
   </script>
 </body>
 </html>
