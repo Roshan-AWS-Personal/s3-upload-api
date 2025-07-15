@@ -11,6 +11,8 @@
     #urlDisplay { margin-top: 1rem; font-weight: bold; }
     .success { color: green; }
     .error { color: red; }
+    progress { width: 100%; height: 1rem; margin-top: 0.5rem; }
+    .file-box { margin-bottom: 1.5rem; }
   </style>
 </head>
 <body>
@@ -51,9 +53,19 @@
       urlDisplay.innerHTML = "";
 
       for (const file of files) {
+        const fileBox = document.createElement("div");
+        fileBox.className = "file-box";
+
         const status = document.createElement("p");
         status.textContent = "Uploading " + file.name + "...";
-        urlDisplay.appendChild(status);
+
+        const progress = document.createElement("progress");
+        progress.value = 0;
+        progress.max = 100;
+
+        fileBox.appendChild(status);
+        fileBox.appendChild(progress);
+        urlDisplay.appendChild(fileBox);
 
         try {
           const query = new URLSearchParams({
@@ -78,25 +90,48 @@
           const data = await response.json();
           const upload_url = data.upload_url;
 
-          const uploadRes = await fetch(upload_url, {
-            method: 'PUT',
-            body: file
-          });
-
-          if (uploadRes.ok) {
-            const cleanUrl = upload_url.split("?")[0];
-            status.innerHTML = "✅ <strong>" + file.name + ":</strong> <a href=\"" + cleanUrl + "\" target=\"_blank\">" + cleanUrl + "</a>";
-            status.classList.add("success");
-          } else {
-            status.textContent = "❌ Upload failed for " + file.name;
-            status.classList.add("error");
-          }
+          await uploadFileWithProgress(file, upload_url, progress, status);
         } catch (err) {
           status.textContent = "❌ Error uploading " + file.name + ": " + err.message;
           status.classList.add("error");
         }
       }
     });
+
+    function uploadFileWithProgress(file, uploadUrl, progressElem, statusElem) {
+      return new Promise((resolve, reject) => {
+        const xhr = new XMLHttpRequest();
+        xhr.open("PUT", uploadUrl, true);
+
+        xhr.upload.onprogress = (event) => {
+          if (event.lengthComputable) {
+            const percent = (event.loaded / event.total) * 100;
+            progressElem.value = percent;
+          }
+        };
+
+        xhr.onload = () => {
+          if (xhr.status === 200) {
+            const cleanUrl = uploadUrl.split("?")[0];
+            statusElem.innerHTML = `✅ <strong>${file.name}:</strong> <a href="${cleanUrl}" target="_blank">${cleanUrl}</a>`;
+            statusElem.classList.add("success");
+            resolve();
+          } else {
+            statusElem.textContent = "❌ Upload failed for " + file.name;
+            statusElem.classList.add("error");
+            reject(new Error("Upload failed"));
+          }
+        };
+
+        xhr.onerror = () => {
+          statusElem.textContent = "❌ Upload error for " + file.name;
+          statusElem.classList.add("error");
+          reject(new Error("XHR error"));
+        };
+
+        xhr.send(file);
+      });
+    }
   </script>
 </body>
 </html>
