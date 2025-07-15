@@ -27,8 +27,8 @@
   </div>
 
   <script>
-    const BEARER_TOKEN = "<%= BEARER_TOKEN %>";
-    const API_URL = "<%= API_URL %>";
+    const BEARER_TOKEN = "${BEARER_TOKEN}";
+    const API_URL = "${API_URL}";
 
     const form = document.getElementById('uploadForm');
     const fileInput = document.getElementById('fileInput');
