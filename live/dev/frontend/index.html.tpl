@@ -11,8 +11,6 @@
     #urlDisplay { margin-top: 1rem; font-weight: bold; }
     .success { color: green; }
     .error { color: red; }
-    progress { width: 100%; height: 1rem; margin-top: 0.5rem; }
-    .file-box { margin-bottom: 1.5rem; }
   </style>
 </head>
 <body>
@@ -28,7 +26,7 @@
 
   <script>
     const BEARER_TOKEN = "__API_KEY__";
-    const API_URL = "__API_URL__";
+    const API_URL = "https://n3bcr23wm1.execute-api.ap-southeast-2.amazonaws.com/dev/upload";
 
     const form = document.getElementById('uploadForm');
     const fileInput = document.getElementById('fileInput');
@@ -53,19 +51,9 @@
       urlDisplay.innerHTML = "";
 
       for (const file of files) {
-        const fileBox = document.createElement("div");
-        fileBox.className = "file-box";
-
         const status = document.createElement("p");
         status.textContent = "Uploading " + file.name + "...";
-
-        const progress = document.createElement("progress");
-        progress.value = 0;
-        progress.max = 100;
-
-        fileBox.appendChild(status);
-        fileBox.appendChild(progress);
-        urlDisplay.appendChild(fileBox);
+        urlDisplay.appendChild(status);
 
         try {
           const query = new URLSearchParams({
@@ -90,38 +78,19 @@
           const data = await response.json();
           const upload_url = data.upload_url;
 
-          await new Promise((resolve, reject) => {
-            const xhr = new XMLHttpRequest();
-            xhr.open("PUT", upload_url, true);
-
-            xhr.upload.onprogress = function (e) {
-              if (e.lengthComputable) {
-                progress.value = Math.round((e.loaded / e.total) * 100);
-              }
-            };
-
-            xhr.onload = function () {
-              if (xhr.status >= 200 && xhr.status < 300) {
-                const cleanUrl = upload_url.split("?")[0];
-                status.innerHTML = "✅ <strong>" + file.name + ":</strong> <a href=\"" + cleanUrl + "\" target=\"_blank\">" + cleanUrl + "</a>";
-                status.classList.add("success");
-                progress.value = 100;
-                resolve();
-              } else {
-                status.textContent = "❌ Upload failed for " + file.name;
-                status.classList.add("error");
-                reject(new Error("Upload failed"));
-              }
-            };
-
-            xhr.onerror = function () {
-              status.textContent = "❌ Upload failed for " + file.name;
-              status.classList.add("error");
-              reject(new Error("Network error"));
-            };
-
-            xhr.send(file);
+          const uploadRes = await fetch(upload_url, {
+            method: 'PUT',
+            body: file
           });
+
+          if (uploadRes.ok) {
+            const cleanUrl = upload_url.split("?")[0];
+            status.innerHTML = "✅ <strong>" + file.name + ":</strong> <a href=\"" + cleanUrl + "\" target=\"_blank\">" + cleanUrl + "</a>";
+            status.classList.add("success");
+          } else {
+            status.textContent = "❌ Upload failed for " + file.name;
+            status.classList.add("error");
+          }
         } catch (err) {
           status.textContent = "❌ Error uploading " + file.name + ": " + err.message;
           status.classList.add("error");
