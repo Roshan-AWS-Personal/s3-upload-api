@@ -31,8 +31,8 @@ jobs:
       AWS_SECRET_ACCESS_KEY_PROD: ${{ secrets.AWS_SECRET_ACCESS_KEY_PROD }}
       AWS_UPLOAD_API_SECRET_DEV: ${{ secrets.UPLOAD_API_SECRET_DEV }}
       AWS_UPLOAD_API_SECRET_PROD: ${{ secrets.UPLOAD_API_SECRET_PROD }}
-      AWS_UPLOAD_API_URL_DEV:    ${{ secrets.UPLOAD_API_URL_DEV }}
-      AWS_UPLOAD_API_URL_PROD:   ${{ secrets.UPLOAD_API_URL_PROD }}
+      AWS_UPLOAD_API_URL_DEV:    ${{ secrets.AWS_API_URL_DEV }}
+      AWS_UPLOAD_API_URL_PROD:   ${{ secrets.AWS_API_URL_PROD }}
 
       # Backend resources
       STATE_BUCKET_DEV:   ${{ secrets.STATE_BUCKET_DEV }}
