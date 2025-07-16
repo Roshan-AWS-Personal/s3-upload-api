@@ -63,7 +63,7 @@
 
     async function ensureLoggedIn() {
       if (!localStorage.getItem("id_token")) {
-        const loginUrl = `${COGNITO_DOMAIN}/login?response_type=code&client_id=\${CLIENT_ID}&redirect_uri=\${encodeURIComponent(REDIRECT_URI)}`;
+        const loginUrl = `${COGNITO_DOMAIN}/login?response_type=code&client_id=${CLIENT_ID}&redirect_uri=${REDIRECT_URI}`;
         window.location.href = loginUrl;
       } else {
         document.getElementById("logoutBtn").style.display = "inline-block";
@@ -72,7 +72,7 @@
 
     document.getElementById("logoutBtn").onclick = function () {
       localStorage.removeItem("id_token");
-      window.location.href = `${COGNITO_DOMAIN}/logout?client_id=\${CLIENT_ID}&logout_uri=\${encodeURIComponent(REDIRECT_URI)}`;
+      window.location.href = `${COGNITO_DOMAIN}/logout?client_id=${CLIENT_ID}&logout_uri=${REDIRECT_URI}`;
     };
 
     // MAIN LOGIN FLOW
