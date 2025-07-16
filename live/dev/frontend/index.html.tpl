@@ -29,7 +29,7 @@
   <script>
     const API_URL = "__API_URL__";
     const COGNITO_DOMAIN = "https://upload-auth.auth.ap-southeast-2.amazoncognito.com";
-    const CLIENT_ID = "YOUR_COGNITO_CLIENT_ID"; // <-- Replace this
+    const CLIENT_ID = "__CLIENT_ID__"; // <-- Replace this
     const REDIRECT_URI = window.location.origin;
 
     // Handle Cognito redirect with ?code=

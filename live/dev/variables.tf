@@ -42,3 +42,13 @@ variable "logout_redirect_url" {
   type        = string
 }
 
+variable "cognito_domain" {
+  description = "Cognito Hosted UI domain"
+  type        = string
+}
+
+variable "cognito_client_id" {
+  description = "Cognito App Client ID"
+  type        = string
+}
+

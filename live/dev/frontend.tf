@@ -45,6 +45,8 @@ data "template_file" "index_html" {
   vars = {
     BEARER_TOKEN = var.upload_api_secret
     API_URL  = var.upload_api_url # You’ll add this variable below
+    COGNITO_DOMAIN  = var.cognito_domain
+    CLIENT_ID       = var.cognito_client_id
   }
 }
 
