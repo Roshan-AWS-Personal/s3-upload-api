@@ -85,9 +85,11 @@ jobs:
           if [[ "${{ github.event.inputs.environment }}" == "dev" ]]; then
             SECRET=${{ env.AWS_UPLOAD_API_SECRET_DEV }}
             API_URL=${{ env.AWS_UPLOAD_API_URL_DEV }}
+            LOGIN_URL="https://image-uploader-frontend-dev.s3-website-ap-southeast-2.amazonaws.com"
           else
             SECRET=${{ env.AWS_UPLOAD_API_SECRET_PROD }}
             API_URL=${{ env.AWS_UPLOAD_API_URL_PROD }}
+            LOGIN_URL="https://image-uploader-frontend-prod.s3-website-ap-southeast-2.amazonaws.com"
           fi
           echo "Deploying with secret: $SECRET"
           terraform plan \
@@ -97,6 +99,8 @@ jobs:
             -var="dynamodb_table=${{ env.DYNAMODB_TABLE }}" \
             -var="upload_api_secret=$SECRET" \
             -var="upload_api_url=$API_URL" \
+            -var="login_redirect_url=$LOGIN_URL" \
+            -var="logout_redirect_url=$LOGIN_URL" \
             -out=tfplan
 
       - name: Terraform Apply (manual)
