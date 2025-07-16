@@ -18,7 +18,7 @@ resource "aws_api_gateway_authorizer" "cognito" {
   rest_api_id     = aws_api_gateway_rest_api.upload_api.id
   identity_source = "method.request.header.Authorization"
   type            = "COGNITO_USER_POOLS"
-  provider_arns   = [aws_cognito_user_pool.upload_user_pool.arn]
+  provider_arns   = [aws_cognito_user_pool.main.arn]
 }
 
 # GET method (uses Cognito Auth)
