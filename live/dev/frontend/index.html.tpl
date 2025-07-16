@@ -11,11 +11,13 @@
     #urlDisplay { margin-top: 1rem; font-weight: bold; }
     .success { color: green; }
     .error { color: red; }
+    #logoutBtn { margin-top: 1rem; display: inline-block; }
   </style>
 </head>
 <body>
   <div class="container">
     <h2>Upload Files</h2>
+    <button id="logoutBtn" style="display:none;">Logout</button>
     <form id="uploadForm">
       <input type="file" id="fileInput" multiple />
       <button type="submit">Upload</button>
@@ -25,8 +27,61 @@
   </div>
 
   <script>
-    const BEARER_TOKEN = "__API_KEY__";
     const API_URL = "__API_URL__";
+    const COGNITO_DOMAIN = "https://upload-auth.auth.ap-southeast-2.amazoncognito.com";
+    const CLIENT_ID = "YOUR_COGNITO_CLIENT_ID"; // <-- Replace this
+    const REDIRECT_URI = window.location.origin;
+
+    // Handle Cognito redirect with ?code=
+    async function handleCognitoLoginRedirect() {
+      const params = new URLSearchParams(window.location.search);
+      const code = params.get("code");
+
+      if (code) {
+        const tokenRes = await fetch(`${COGNITO_DOMAIN}/oauth2/token`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/x-www-form-urlencoded"
+          },
+          body: new URLSearchParams({
+            grant_type: "authorization_code",
+            client_id: CLIENT_ID,
+            redirect_uri: REDIRECT_URI,
+            code: code
+          }).toString()
+        });
+
+        const tokenData = await tokenRes.json();
+        if (tokenData.id_token) {
+          localStorage.setItem("id_token", tokenData.id_token);
+          window.history.replaceState({}, document.title, REDIRECT_URI); // Remove ?code
+        } else {
+          alert("Failed to log in: " + (tokenData.error_description || "Unknown error"));
+        }
+      }
+    }
+
+    async function ensureLoggedIn() {
+      if (!localStorage.getItem("id_token")) {
+        const loginUrl = `${COGNITO_DOMAIN}/login?response_type=code&client_id=${CLIENT_ID}&redirect_uri=${encodeURIComponent(REDIRECT_URI)}`;
+        window.location.href = loginUrl;
+      } else {
+        document.getElementById("logoutBtn").style.display = "inline-block";
+      }
+    }
+
+    document.getElementById("logoutBtn").onclick = function () {
+      localStorage.removeItem("id_token");
+      window.location.href = `${COGNITO_DOMAIN}/logout?client_id=${CLIENT_ID}&logout_uri=${encodeURIComponent(REDIRECT_URI)}`;
+    };
+
+    // MAIN LOGIN FLOW
+    (async function () {
+      await handleCognitoLoginRedirect();
+      await ensureLoggedIn();
+    })();
+
+    // --- Upload logic ---
 
     const form = document.getElementById('uploadForm');
     const fileInput = document.getElementById('fileInput');
@@ -46,7 +101,10 @@
     form.addEventListener('submit', async (e) => {
       e.preventDefault();
       const files = fileInput.files;
+      const token = localStorage.getItem("id_token");
+
       if (!files.length) return alert("Please choose one or more files.");
+      if (!token) return alert("You're not logged in.");
 
       urlDisplay.innerHTML = "";
 
@@ -65,7 +123,7 @@
           const response = await fetch(API_URL + "?" + query.toString(), {
             method: 'GET',
             headers: {
-              "Authorization": BEARER_TOKEN
+              "Authorization": "Bearer " + token
             }
           });
 
@@ -85,10 +143,10 @@
 
           if (uploadRes.ok) {
             const cleanUrl = upload_url.split("?")[0];
-            status.innerHTML = "✅ <strong>" + file.name + ":</strong> <a href=\"" + cleanUrl + "\" target=\"_blank\">" + cleanUrl + "</a>";
+            status.innerHTML = `✅ <strong>${file.name}:</strong> <a href="${cleanUrl}" target="_blank">${cleanUrl}</a>`;
             status.classList.add("success");
           } else {
-            status.textContent = "❌ Upload failed for " + file.name;
+            status.textContent = `❌ Upload failed for ${file.name}`;
             status.classList.add("error");
           }
         } catch (err) {
