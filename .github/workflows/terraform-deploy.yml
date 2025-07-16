@@ -85,13 +85,17 @@ jobs:
           if [[ "${{ github.event.inputs.environment }}" == "dev" ]]; then
             SECRET=${{ env.AWS_UPLOAD_API_SECRET_DEV }}
             API_URL=${{ env.AWS_UPLOAD_API_URL_DEV }}
-            COGNITO_CLIENT_ID=${{ secrets.COGNITO_CLIENT_ID_DEV }} \
-            LOGIN_URL=${{ secrets.COGNITO_DOMAIN_DEV }} \
+            COGNITO_CLIENT_ID=${{ secrets.COGNITO_CLIENT_ID_DEV }}
+            COGNITO_DOMAIN=${{ secrets.COGNITO_DOMAIN_DEV }}
+            LOGIN_URL="https://image-uploader-frontend-dev.s3-website-ap-southeast-2.amazonaws.com"
           else
             SECRET=${{ env.AWS_UPLOAD_API_SECRET_PROD }}
             API_URL=${{ env.AWS_UPLOAD_API_URL_PROD }}
+            COGNITO_CLIENT_ID=${{ secrets.COGNITO_CLIENT_ID_PROD }}
+            COGNITO_DOMAIN=${{ secrets.COGNITO_DOMAIN_PROD }}
             LOGIN_URL="https://image-uploader-frontend-prod.s3-website-ap-southeast-2.amazonaws.com"
           fi
+
           echo "Deploying with secret: $SECRET"
           terraform plan \
             -var="aws_region=${{ env.AWS_REGION }}" \
@@ -102,6 +106,8 @@ jobs:
             -var="upload_api_url=$API_URL" \
             -var="login_redirect_url=$LOGIN_URL" \
             -var="logout_redirect_url=$LOGIN_URL" \
+            -var="cognito_client_id=$COGNITO_CLIENT_ID" \
+            -var="cognito_domain=$COGNITO_DOMAIN" \
             -out=tfplan
 
       - name: Terraform Apply (manual)
