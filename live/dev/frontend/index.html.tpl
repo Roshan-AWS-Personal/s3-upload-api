@@ -143,10 +143,10 @@
 
           if (uploadRes.ok) {
             const cleanUrl = upload_url.split("?")[0];
-            status.innerHTML = `✅ <strong>${file.name}:</strong> <a href="${cleanUrl}" target="_blank">${cleanUrl}</a>`;
+            status.innerHTML = `✅ <strong>\${file.name}:</strong> <a href="\${cleanUrl}" target="_blank">\${cleanUrl}</a>`;
             status.classList.add("success");
           } else {
-            status.textContent = `❌ Upload failed for ${file.name}`;
+            status.textContent = `❌ Upload failed for \${file.name}`;
             status.classList.add("error");
           }
         } catch (err) {
