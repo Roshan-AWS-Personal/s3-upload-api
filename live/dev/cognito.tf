@@ -33,5 +33,5 @@ resource "aws_cognito_user_pool_domain" "ui" {
 }
 
 output "cognito_login_url" {
-  value = "https://${var.cognito_domain}/login?client_id=${var.cognito_client_id}&response_type=code&scope=openid+email&redirect_uri=${var.login_redirect_url}"
+  value = "${var.cognito_domain}/login?client_id=${var.cognito_client_id}&response_type=code&scope=openid+email&redirect_uri=${var.login_redirect_url}"
 }
