@@ -96,7 +96,6 @@ jobs:
             LOGIN_URL="https://image-uploader-frontend-prod.s3-website-ap-southeast-2.amazonaws.com"
           fi
 
-          echo "Deploying with secret: $SECRET"
           terraform plan \
             -var="aws_region=${{ env.AWS_REGION }}" \
             -var="state_bucket=${{ env.STATE_BUCKET }}" \
@@ -114,24 +113,3 @@ jobs:
         if: ${{ github.event.inputs.confirm_apply == 'true' }}
         working-directory: ${{ steps.env.outputs.WORK_DIR }}
         run: terraform apply -auto-approve tfplan
-
-      - name: Inject API key and deploy frontend
-        if: ${{ github.event.inputs.confirm_apply == 'true' }}
-        run: |
-          echo "Injecting API key into HTML..."
-          if [[ "${{ github.event.inputs.environment }}" == "dev" ]]; then
-            TOKEN=${{ env.AWS_UPLOAD_API_SECRET_DEV }}
-            API_URL=${{ env.AWS_UPLOAD_API_URL_DEV }}
-            BUCKET="image-uploader-frontend-dev"
-          else
-            TOKEN=${{ env.AWS_UPLOAD_API_SECRET_PROD }}
-            API_URL=${{ env.AWS_UPLOAD_API_URL_PROD }}
-            BUCKET="image-uploader-frontend-prod"
-          fi
-
-          sed -e "s|__API_KEY__|Bearer $TOKEN|g" \
-              -e "s|__API_URL__|$API_URL|g" \
-              live/${{ github.event.inputs.environment }}/frontend/index.html.tpl > live/${{ github.event.inputs.environment }}/frontend/index.html
-
-          echo "Uploading index.html to S3..."
-          aws s3 cp live/${{ github.event.inputs.environment }}/frontend/index.html s3://$BUCKET/index.html --region ${{ env.AWS_REGION }} --content-type "text/html"
