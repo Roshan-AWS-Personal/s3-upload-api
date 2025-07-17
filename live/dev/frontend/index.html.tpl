@@ -28,7 +28,7 @@
 
   <script>
     const API_URL = "__API_URL__";
-    const COGNITO_DOMAIN = "__COGNITO_DOMAIN__";
+    const COGNITO_DOMAIN = "__COGNITO_DOMAIN__"; // e.g., https://your-domain.auth.ap-southeast-2.amazoncognito.com
     const CLIENT_ID = "__CLIENT_ID__";
     const REDIRECT_URI = window.location.origin;
 
@@ -37,25 +37,37 @@
       const code = params.get("code");
 
       if (code) {
-        const tokenRes = await fetch(COGNITO_DOMAIN + "/oauth2/token", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/x-www-form-urlencoded"
-          },
-          body: new URLSearchParams({
-            grant_type: "authorization_code",
-            client_id: CLIENT_ID,
-            redirect_uri: REDIRECT_URI,
-            code: code
-          }).toString()
-        });
+        try {
+          const tokenRes = await fetch(COGNITO_DOMAIN + "/oauth2/token", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/x-www-form-urlencoded"
+            },
+            body: new URLSearchParams({
+              grant_type: "authorization_code",
+              client_id: CLIENT_ID,
+              redirect_uri: REDIRECT_URI,
+              code: code
+            })
+          });
 
-        const tokenData = await tokenRes.json();
-        if (tokenData.id_token) {
-          localStorage.setItem("id_token", tokenData.id_token);
-          window.history.replaceState({}, document.title, REDIRECT_URI);
-        } else {
-          alert("Failed to log in: " + (tokenData.error_description || "Unknown error"));
+          const text = await tokenRes.text();
+          let tokenData;
+          try {
+            tokenData = JSON.parse(text);
+          } catch {
+            alert("Invalid token response: " + text);
+            return;
+          }
+
+          if (tokenData.id_token) {
+            localStorage.setItem("id_token", tokenData.id_token);
+            window.history.replaceState({}, document.title, REDIRECT_URI);
+          } else {
+            alert("Failed to log in: " + (tokenData.error_description || "Unknown error"));
+          }
+        } catch (err) {
+          alert("OAuth error: " + err.message);
         }
       }
     }
@@ -63,7 +75,12 @@
     async function ensureLoggedIn() {
       if (!localStorage.getItem("id_token")) {
         const loginUrl = COGNITO_DOMAIN + "/login?response_type=code&client_id=" + CLIENT_ID + "&redirect_uri=" + encodeURIComponent(REDIRECT_URI);
-        window.location.href = loginUrl;
+        const lastRedirect = sessionStorage.getItem("last_redirect");
+
+        if (!lastRedirect || Date.now() - parseInt(lastRedirect) > 10000) {
+          sessionStorage.setItem("last_redirect", Date.now().toString());
+          window.location.href = loginUrl;
+        }
       } else {
         document.getElementById("logoutBtn").style.display = "inline-block";
       }
