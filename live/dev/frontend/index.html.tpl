@@ -31,7 +31,8 @@
     const COGNITO_DOMAIN = "${COGNITO_DOMAIN}";
     const CLIENT_ID = "${CLIENT_ID}";
     const REDIRECT_URI = "${REDIRECT_URI}";
-    const LOGOUT_URI = "${LOGOUT_URI}";
+    const LOGOUT_URI = "https://d3oxbj8znkj30z.cloudfront.net"
+";
 
     function decodeJwt(token) {
       try {
