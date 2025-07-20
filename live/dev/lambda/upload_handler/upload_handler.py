@@ -8,20 +8,19 @@ import re
 from datetime import datetime
 
 s3 = boto3.client("s3")
+ses = boto3.client('ses')
+dynamodb = boto3.resource("dynamodb")
+
 MAX_FILE_SIZE = 5 * 1024 * 1024  # 5MB
 ALLOWED_IMAGE_TYPES = {"jpeg", "jpg", "png"}
-
-ses = boto3.client('ses')
 recipient_email = "venkatesanroshan@gmail.com"
-
-dynamodb = boto3.resource("dynamodb")
 table = dynamodb.Table('file_upload_metadata')
 
 IMAGE_EXTENSIONS = {"jpg", "jpeg", "png", "gif"}
 DOCUMENT_EXTENSIONS = {"pdf", "doc", "docx", "txt"}
 
 logger = logging.getLogger()
-
+logger.setLevel(logging.INFO)
 
 def response(status_code, body):
     return {
@@ -34,20 +33,10 @@ def response(status_code, body):
         "body": json.dumps(body if isinstance(body, dict) else {"message": body})
     }
 
-
 def sanitize_filename(name):
     import urllib.parse
-    safe_name = re.sub(r"[^\w.\-]", "_", name)  # Replace spaces and unsafe characters
-    return urllib.parse.quote(safe_name)        # URL-encode it properly
-
-
-def is_authorized(auth_header):
-    expected = os.environ.get("UPLOAD_API_SECRET")
-    if not expected:
-        return False
-    scheme, _, value = auth_header.partition(" ")
-    return scheme.lower() == "bearer" and value == expected
-
+    safe_name = re.sub(r"[^\w.\-]", "_", name)
+    return urllib.parse.quote(safe_name)
 
 def get_bucket_for_file(filename):
     ext = filename.rsplit('.', 1)[-1].lower()
@@ -58,10 +47,8 @@ def get_bucket_for_file(filename):
     else:
         raise ValueError(f"Unsupported file type: {ext}")
 
-
 def lambda_handler(event, context):
     try:
-        # --- Handle CORS preflight ---
         if event["httpMethod"] == "OPTIONS":
             return {
                 "statusCode": 200,
@@ -73,10 +60,16 @@ def lambda_handler(event, context):
                 "body": json.dumps({"message": "CORS preflight OK"})
             }
 
-        # --- Auth check ---
-        auth_header = event["headers"].get("Authorization")
-        if not auth_header or not is_authorized(auth_header):
-            return response(401, "Unauthorized")
+        # ✅ Extract Cognito claims
+        claims = event.get("requestContext", {}).get("authorizer", {}).get("claims", {})
+        user_email = claims.get("email", "Unknown")
+        username = claims.get("cognito:username", "Unknown")
+        token_use = claims.get("token_use", "missing")
+
+        logger.info(f"Request from Cognito user: {username}, email: {user_email}, token_use: {token_use}")
+        if token_use != "id":
+            logger.warning("Token is not an ID token. Rejecting.")
+            return response(401, "Unauthorized: ID token required")
 
         query = event.get("queryStringParameters") or {}
         filename = query.get("filename")
@@ -85,16 +78,14 @@ def lambda_handler(event, context):
         try:
             filesize = int(raw_size)
         except (ValueError, TypeError):
-            logging.warning(f"Invalid filesize value: {raw_size}")
+            logger.warning(f"Invalid filesize value: {raw_size}")
             filesize = 0
 
         content_type = query.get("content_type")
-
         if not filename or not content_type:
             return response(400, "Missing filename or content_type")
 
-        # --- S3 Key Generation ---
-        key = f"{sanitize_filename(filename)}"
+        key = sanitize_filename(filename)
         BUCKET_NAME = get_bucket_for_file(filename)
         logger.info(f"Using bucket: {BUCKET_NAME} for file: {filename}")
         presigned_url = s3.generate_presigned_url(
@@ -113,7 +104,6 @@ def lambda_handler(event, context):
         uploader_ip = event['requestContext']['identity']['sourceIp']
         user_agent = event['headers'].get('User-Agent', 'Unknown')
 
-        # Do not write to DynamoDB yet — wait for successful upload later (external confirmation)
         item = {
             'upload_id': upload_id,
             'filename': filename,
@@ -125,22 +115,24 @@ def lambda_handler(event, context):
             'uploader_agent': user_agent,
             'file_url': file_url,
             'content_type': content_type,
-            'status': 'presigned'
+            'status': 'presigned',
+            'username': username,
+            'user_email': user_email
         }
 
         subject = f"New Upload URL Issued: {filename}"
         body_text = f"""\
-        A new presigned URL was issued:
+            A new presigned URL was issued:
 
-        Filename: {filename}
-        Size: {filesize} bytes
-        Uploader IP: {uploader_ip}
-        User Agent: {user_agent}
-        S3 URL: {file_url}
-        Timestamp: {timestamp}
-        """
+            Filename: {filename}
+            Size: {filesize} bytes
+            Uploader IP: {uploader_ip}
+            User Agent: {user_agent}
+            S3 URL: {file_url}
+            User Email: {user_email}
+            Timestamp: {timestamp}
+            """
 
-        logger.setLevel(logging.INFO)
         try:
             logger.info("Sending SES email...")
             ses_response = ses.send_email(
@@ -151,9 +143,9 @@ def lambda_handler(event, context):
                     "Body": {"Text": {"Data": body_text}}
                 }
             )
-            logger.info("SES email sent successfully. Response: %s", ses_response)
+            logger.info("SES email sent successfully.")
         except Exception as e:
-            logger.error("Error sending SES email: %s", str(e))
+            logger.error("SES failed: %s", str(e))
 
         print("Presigned URL issued (not yet uploaded):", item)
 
@@ -170,5 +162,5 @@ def lambda_handler(event, context):
         }
 
     except Exception as e:
-        logging.exception("Error generating presigned URL")
+        logger.exception("Error generating presigned URL")
         return response(500, f"Internal server error: {str(e)}")
