@@ -133,6 +133,8 @@ resource "aws_kms_key" "lambda_key" {
   })
 }
 
+data "aws_caller_identity" "current" {}
+
 resource "aws_iam_role_policy" "lambda_s3_policy" {
   name = "lambda-s3-upload-policy"
   role = aws_iam_role.image_uploader_lambda_exec_role.id
