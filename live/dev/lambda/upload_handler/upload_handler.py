@@ -70,6 +70,7 @@ def lambda_handler(event, context):
         if token_use != "id":
             logger.warning("Token is not an ID token. Rejecting.")
             return response(401, "Unauthorized: ID token required")
+        logger.info(f"Upload request from Cognito user: {username}, email: {user_email}")
 
         query = event.get("queryStringParameters") or {}
         filename = query.get("filename")
