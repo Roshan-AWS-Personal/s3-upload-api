@@ -86,6 +86,39 @@ resource "aws_iam_role" "image_uploader_lambda_exec_role" {
   }
 }
 
+resource "aws_kms_key" "lambda_key" {
+  description         = "KMS key for encrypting Lambda environment variables"
+  enable_key_rotation = false
+
+  policy = jsonencode({
+    Version = "2012-10-17",
+    Id      = "key-lambda-upload",
+    Statement: [
+      {
+        Sid: "AllowLambdaToDecrypt",
+        Effect: "Allow",
+        Principal: {
+          AWS: aws_iam_role.image_uploader_lambda_exec_role.arn
+        },
+        Action: [
+          "kms:Decrypt",
+          "kms:GenerateDataKey"
+        ],
+        Resource: "*"
+      },
+      {
+        Sid: "AllowRootAccountFullAccess",
+        Effect: "Allow",
+        Principal: {
+          AWS: "arn:aws:iam::${data.aws_caller_identity.current.account_id}:root"
+        },
+        Action: "kms:*",
+        Resource: "*"
+      }
+    ]
+  })
+}
+
 resource "aws_iam_role_policy" "lambda_s3_policy" {
   name = "lambda-s3-upload-policy"
   role = aws_iam_role.image_uploader_lambda_exec_role.id
