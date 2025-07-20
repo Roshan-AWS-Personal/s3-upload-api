@@ -190,6 +190,9 @@
 
           const uploadRes = await fetch(data.upload_url, {
             method: 'PUT',
+            headers: {
+              "Content-Type": file.type // ✅ This fixes the presigned upload issue!
+            },
             body: file
           });
 
