@@ -42,6 +42,9 @@ resource "aws_lambda_function" "s3_event_logger" {
       DYNAMODB_TABLE = var.dynamodb_table
     }
   }
+    lifecycle {
+    create_before_destroy = true
+  }
 }
 
 # For the event logger Lambda (from event_logger.py)
@@ -212,6 +215,9 @@ resource "aws_iam_role_policy" "lambda_s3_policy" {
       }
     ]
   })
+    lifecycle {
+    create_before_destroy = true
+  }
 }
 
 resource "aws_iam_role_policy" "lambda_ses_policy" {
