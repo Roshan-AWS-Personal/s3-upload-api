@@ -37,23 +37,16 @@
       const code = params.get("code");
 
       if (code) {
-        console.log("Sending token request to Cognito with:", {
-          grant_type: "authorization_code",
-          client_id: CLIENT_ID,
-          redirect_uri: REDIRECT_URI,
-          code: code
-        });
+        const redirect_uri = REDIRECT_URI;
 
         try {
           const tokenRes = await fetch(COGNITO_DOMAIN + "/oauth2/token", {
             method: "POST",
-            headers: {
-              "Content-Type": "application/x-www-form-urlencoded"
-            },
+            headers: { "Content-Type": "application/x-www-form-urlencoded" },
             body: new URLSearchParams({
               grant_type: "authorization_code",
               client_id: CLIENT_ID,
-              redirect_uri: REDIRECT_URI,
+              redirect_uri: redirect_uri,
               code: code
             })
           });
@@ -69,13 +62,10 @@
             return;
           }
 
-          if (tokenData.access_token) {
-            localStorage.setItem("access_token", tokenData.access_token);
-            // Optional: save id_token for display/email use later
-            if (tokenData.id_token) {
-              localStorage.setItem("id_token", tokenData.id_token);
-            }
-            window.history.replaceState({}, document.title, REDIRECT_URI);
+          if (tokenData.id_token) {
+            // ✅ Store only the id_token for API Gateway use
+            localStorage.setItem("id_token", tokenData.id_token);
+            window.history.replaceState({}, document.title, redirect_uri);
           } else {
             alert("Failed to log in: " + (tokenData.error_description || "Unknown error"));
           }
@@ -86,7 +76,7 @@
     }
 
     async function ensureLoggedIn() {
-      if (!localStorage.getItem("access_token")) {
+      if (!localStorage.getItem("id_token")) {
         const loginUrl = COGNITO_DOMAIN + "/login?response_type=code&client_id=" + CLIENT_ID + "&redirect_uri=" + encodeURIComponent(REDIRECT_URI);
         const lastRedirect = sessionStorage.getItem("last_redirect");
 
@@ -100,7 +90,6 @@
     }
 
     document.getElementById("logoutBtn").onclick = function () {
-      localStorage.removeItem("access_token");
       localStorage.removeItem("id_token");
       window.location.href = COGNITO_DOMAIN + "/logout?client_id=" + CLIENT_ID + "&logout_uri=" + encodeURIComponent(REDIRECT_URI);
     };
@@ -130,7 +119,7 @@
     form.addEventListener('submit', async (e) => {
       e.preventDefault();
       const files = fileInput.files;
-      const token = localStorage.getItem("access_token");
+      const token = localStorage.getItem("id_token"); // ✅ API Gateway expects id_token
 
       if (!files.length) return alert("Please choose one or more files.");
       if (!token) return alert("You're not logged in.");
