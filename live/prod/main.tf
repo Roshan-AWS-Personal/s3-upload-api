@@ -9,7 +9,7 @@ terraform {
   required_version = ">= 1.5.0"
 }
 resource "aws_s3_bucket" "image_upload_bucket" {
-  bucket = "s3-image-upload-api-2712-${var.env}"
+  bucket = "s3-image-upload-api-2712-prod"
   force_destroy = true
 
   tags = {
@@ -18,7 +18,7 @@ resource "aws_s3_bucket" "image_upload_bucket" {
 }
 
 resource "aws_s3_bucket" "documents_bucket" {
-  bucket = "s3-upload-documents-${var.env}"
+  bucket = "s3-upload-documents-prod"
   force_destroy = true
     tags = {
     Name = "document-upload-api-bucket"
