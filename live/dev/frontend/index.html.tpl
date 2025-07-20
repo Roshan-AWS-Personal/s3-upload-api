@@ -37,14 +37,10 @@
       const code = params.get("code");
 
       if (code) {
-        const redirect_uri = REDIRECT_URI;
-        const client_id = CLIENT_ID;
-
-        // ✅ Add this console log:
         console.log("Sending token request to Cognito with:", {
           grant_type: "authorization_code",
-          client_id: client_id,
-          redirect_uri: redirect_uri,
+          client_id: CLIENT_ID,
+          redirect_uri: REDIRECT_URI,
           code: code
         });
 
@@ -56,15 +52,13 @@
             },
             body: new URLSearchParams({
               grant_type: "authorization_code",
-              client_id: client_id,
-              redirect_uri: redirect_uri,
+              client_id: CLIENT_ID,
+              redirect_uri: REDIRECT_URI,
               code: code
             })
           });
 
           const text = await tokenRes.text();
-
-          // ✅ Log raw response in case of failure:
           console.log("Token endpoint raw response:", text);
 
           let tokenData;
@@ -75,9 +69,13 @@
             return;
           }
 
-          if (tokenData.id_token) {
-            localStorage.setItem("id_token", tokenData.id_token);
-            window.history.replaceState({}, document.title, redirect_uri);
+          if (tokenData.access_token) {
+            localStorage.setItem("access_token", tokenData.access_token);
+            // Optional: save id_token for display/email use later
+            if (tokenData.id_token) {
+              localStorage.setItem("id_token", tokenData.id_token);
+            }
+            window.history.replaceState({}, document.title, REDIRECT_URI);
           } else {
             alert("Failed to log in: " + (tokenData.error_description || "Unknown error"));
           }
@@ -88,7 +86,7 @@
     }
 
     async function ensureLoggedIn() {
-      if (!localStorage.getItem("id_token")) {
+      if (!localStorage.getItem("access_token")) {
         const loginUrl = COGNITO_DOMAIN + "/login?response_type=code&client_id=" + CLIENT_ID + "&redirect_uri=" + encodeURIComponent(REDIRECT_URI);
         const lastRedirect = sessionStorage.getItem("last_redirect");
 
@@ -102,6 +100,7 @@
     }
 
     document.getElementById("logoutBtn").onclick = function () {
+      localStorage.removeItem("access_token");
       localStorage.removeItem("id_token");
       window.location.href = COGNITO_DOMAIN + "/logout?client_id=" + CLIENT_ID + "&logout_uri=" + encodeURIComponent(REDIRECT_URI);
     };
@@ -131,7 +130,7 @@
     form.addEventListener('submit', async (e) => {
       e.preventDefault();
       const files = fileInput.files;
-      const token = localStorage.getItem("id_token");
+      const token = localStorage.getItem("access_token");
 
       if (!files.length) return alert("Please choose one or more files.");
       if (!token) return alert("You're not logged in.");
