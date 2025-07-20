@@ -37,6 +37,17 @@
       const code = params.get("code");
 
       if (code) {
+        const redirect_uri = REDIRECT_URI;
+        const client_id = CLIENT_ID;
+
+        // ✅ Add this console log:
+        console.log("Sending token request to Cognito with:", {
+          grant_type: "authorization_code",
+          client_id: client_id,
+          redirect_uri: redirect_uri,
+          code: code
+        });
+
         try {
           const tokenRes = await fetch(COGNITO_DOMAIN + "/oauth2/token", {
             method: "POST",
@@ -45,13 +56,17 @@
             },
             body: new URLSearchParams({
               grant_type: "authorization_code",
-              client_id: CLIENT_ID,
-              redirect_uri: REDIRECT_URI,
+              client_id: client_id,
+              redirect_uri: redirect_uri,
               code: code
             })
           });
 
           const text = await tokenRes.text();
+
+          // ✅ Log raw response in case of failure:
+          console.log("Token endpoint raw response:", text);
+
           let tokenData;
           try {
             tokenData = JSON.parse(text);
@@ -62,7 +77,7 @@
 
           if (tokenData.id_token) {
             localStorage.setItem("id_token", tokenData.id_token);
-            window.history.replaceState({}, document.title, REDIRECT_URI);
+            window.history.replaceState({}, document.title, redirect_uri);
           } else {
             alert("Failed to log in: " + (tokenData.error_description || "Unknown error"));
           }
