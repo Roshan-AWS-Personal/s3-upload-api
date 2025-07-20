@@ -8,20 +8,19 @@ import re
 from datetime import datetime
 
 s3 = boto3.client("s3")
-ses = boto3.client("ses")
+ses = boto3.client('ses')
 dynamodb = boto3.resource("dynamodb")
 
 MAX_FILE_SIZE = 5 * 1024 * 1024  # 5MB
 ALLOWED_IMAGE_TYPES = {"jpeg", "jpg", "png"}
 recipient_email = "venkatesanroshan@gmail.com"
-table = dynamodb.Table("file_upload_metadata")
+table = dynamodb.Table('file_upload_metadata')
 
 IMAGE_EXTENSIONS = {"jpg", "jpeg", "png", "gif"}
 DOCUMENT_EXTENSIONS = {"pdf", "doc", "docx", "txt"}
 
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
-
 
 def response(status_code, body):
     return {
@@ -34,12 +33,10 @@ def response(status_code, body):
         "body": json.dumps(body if isinstance(body, dict) else {"message": body})
     }
 
-
 def sanitize_filename(name):
     import urllib.parse
     safe_name = re.sub(r"[^\w.\-]", "_", name)
     return urllib.parse.quote(safe_name)
-
 
 def get_bucket_for_file(filename):
     ext = filename.rsplit('.', 1)[-1].lower()
@@ -50,11 +47,18 @@ def get_bucket_for_file(filename):
     else:
         raise ValueError(f"Unsupported file type: {ext}")
 
-
 def lambda_handler(event, context):
     try:
         if event["httpMethod"] == "OPTIONS":
-            return response(200, "CORS preflight OK")
+            return {
+                "statusCode": 200,
+                "headers": {
+                    "Access-Control-Allow-Origin": "*",
+                    "Access-Control-Allow-Headers": "Content-Type, Authorization",
+                    "Access-Control-Allow-Methods": "OPTIONS,GET,PUT",
+                },
+                "body": json.dumps({"message": "CORS preflight OK"})
+            }
 
         # ✅ Extract Cognito claims
         claims = event.get("requestContext", {}).get("authorizer", {}).get("claims", {})
@@ -63,6 +67,10 @@ def lambda_handler(event, context):
         token_use = claims.get("token_use", "missing")
 
         logger.info(f"Request from Cognito user: {username}, email: {user_email}, token_use: {token_use}")
+        # if token_use != "id":
+        #     logger.warning("Token is not an ID token. Rejecting.")
+        #     return response(401, "Unauthorized: ID token required")
+        logger.info(f"Upload request from Cognito user: {username}, email: {user_email}")
 
         query = event.get("queryStringParameters") or {}
         filename = query.get("filename")
@@ -81,7 +89,6 @@ def lambda_handler(event, context):
         key = sanitize_filename(filename)
         BUCKET_NAME = get_bucket_for_file(filename)
         logger.info(f"Using bucket: {BUCKET_NAME} for file: {filename}")
-
         presigned_url = s3.generate_presigned_url(
             ClientMethod='put_object',
             Params={
@@ -115,21 +122,21 @@ def lambda_handler(event, context):
         }
 
         subject = f"New Upload URL Issued: {filename}"
-        body_text = f"""\n
-        A new presigned URL was issued:
+        body_text = f"""\
+            A new presigned URL was issued:
 
-        Filename: {filename}
-        Size: {filesize} bytes
-        Uploader IP: {uploader_ip}
-        User Agent: {user_agent}
-        S3 URL: {file_url}
-        User Email: {user_email}
-        Timestamp: {timestamp}
-        """
+            Filename: {filename}
+            Size: {filesize} bytes
+            Uploader IP: {uploader_ip}
+            User Agent: {user_agent}
+            S3 URL: {file_url}
+            User Email: {user_email}
+            Timestamp: {timestamp}
+            """
 
         try:
             logger.info("Sending SES email...")
-            ses.send_email(
+            ses_response = ses.send_email(
                 Source=recipient_email,
                 Destination={"ToAddresses": [recipient_email]},
                 Message={
@@ -141,12 +148,19 @@ def lambda_handler(event, context):
         except Exception as e:
             logger.error("SES failed: %s", str(e))
 
-        logger.info("Presigned URL issued: %s", item)
+        print("Presigned URL issued (not yet uploaded):", item)
 
-        return response(200, {
-            "upload_id": upload_id,
-            "upload_url": presigned_url
-        })
+        return {
+            "statusCode": 200,
+            "body": json.dumps({
+                "upload_id": upload_id,
+                "upload_url": presigned_url
+            }),
+            "headers": {
+                "Content-Type": "application/json",
+                "Access-Control-Allow-Origin": "*"
+            }
+        }
 
     except Exception as e:
         logger.exception("Error generating presigned URL")

@@ -2,7 +2,7 @@ resource "aws_s3_bucket" "frontend_site" {
   bucket = "image-uploader-frontend-${var.env}"
 
   tags = {
-    Name        = "Frontend Site ${var.env}"
+    Name = format("Frontend Site Dev")
     Environment = var.env
   }
 }
