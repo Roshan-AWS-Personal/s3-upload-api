@@ -18,7 +18,7 @@ resource "aws_s3_bucket" "image_upload_bucket" {
 }
 
 resource "aws_s3_bucket" "documents_bucket" {
-  bucket = "s3-upload-documents"
+  bucket = "s3-upload-documents-prod"
   force_destroy = true
     tags = {
     Name = "document-upload-api-bucket"
