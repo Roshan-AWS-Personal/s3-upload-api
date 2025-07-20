@@ -93,7 +93,7 @@ jobs:
             API_URL=${{ env.AWS_UPLOAD_API_URL_PROD }}
             COGNITO_CLIENT_ID=${{ secrets.COGNITO_CLIENT_ID_PROD }}
             COGNITO_DOMAIN=${{ secrets.COGNITO_DOMAIN_PROD }}
-            LOGIN_URL="http://image-uploader-frontend-prod.s3-website-ap-southeast-2.amazonaws.com"
+            LOGIN_URL="https://d37ne0mpyi4d5o.cloudfront.net"
           fi
 
           terraform plan \
