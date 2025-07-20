@@ -160,6 +160,9 @@ resource "aws_lambda_function" "image_uploader" {
     aws_iam_role_policy.lambda_s3_policy,
     aws_kms_key.lambda_key
   ]
+    lifecycle {
+    create_before_destroy = true
+  }
 }
 
 resource "aws_iam_role" "image_uploader_lambda_exec_role" {
