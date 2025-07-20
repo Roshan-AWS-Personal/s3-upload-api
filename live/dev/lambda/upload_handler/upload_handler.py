@@ -67,9 +67,9 @@ def lambda_handler(event, context):
         token_use = claims.get("token_use", "missing")
 
         logger.info(f"Request from Cognito user: {username}, email: {user_email}, token_use: {token_use}")
-        if token_use != "id":
-            logger.warning("Token is not an ID token. Rejecting.")
-            return response(401, "Unauthorized: ID token required")
+        # if token_use != "id":
+        #     logger.warning("Token is not an ID token. Rejecting.")
+        #     return response(401, "Unauthorized: ID token required")
         logger.info(f"Upload request from Cognito user: {username}, email: {user_email}")
 
         query = event.get("queryStringParameters") or {}

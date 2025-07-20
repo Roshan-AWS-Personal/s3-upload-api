@@ -1,3 +1,9 @@
+# CloudWatch Log Group for API Gateway Access Logs
+resource "aws_cloudwatch_log_group" "api_gw_access_log" {
+  name              = "/aws/apigateway/${aws_api_gateway_rest_api.upload_api.name}-access"
+  retention_in_days = 14
+}
+
 # REST API
 resource "aws_api_gateway_rest_api" "upload_api" {
   name        = "image-upload-api"
@@ -166,9 +172,26 @@ resource "aws_api_gateway_stage" "stage" {
   deployment_id = aws_api_gateway_deployment.api_deployment.id
 
   depends_on = [aws_api_gateway_deployment.api_deployment]
+
+  access_log_settings {
+    destination_arn = aws_cloudwatch_log_group.api_gw_access_log.arn
+    format = jsonencode({
+      requestId      = "$context.requestId"
+      sourceIp       = "$context.identity.sourceIp"
+      caller         = "$context.identity.caller"
+      user           = "$context.identity.user"
+      requestTime    = "$context.requestTime"
+      httpMethod     = "$context.httpMethod"
+      resourcePath   = "$context.resourcePath"
+      status         = "$context.status"
+      protocol       = "$context.protocol"
+      responseLength = "$context.responseLength"
+    })
+  }
 }
 
 # Output API URL
 output "upload_api_url" {
   value = "https://${aws_api_gateway_rest_api.upload_api.id}.execute-api.${var.aws_region}.amazonaws.com/${aws_api_gateway_stage.stage.stage_name}/upload"
 }
+
