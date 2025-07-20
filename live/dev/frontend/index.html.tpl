@@ -96,7 +96,7 @@
     async function ensureLoggedIn() {
       const token = localStorage.getItem("id_token");
       if (!token) {
-        const loginUrl = `${COGNITO_DOMAIN}/login?response_type=code&client_id=${CLIENT_ID}&redirect_uri=${encodeURIComponent(REDIRECT_URI)}&scope=openid+email+profile`;
+        const loginUrl = `${COGNITO_DOMAIN}/login?response_type=code&client_id=${CLIENT_ID}&redirect_uri=${REDIRECT_URI}&scope=openid+email+profile`;
         const lastRedirect = sessionStorage.getItem("last_redirect");
 
         if (!lastRedirect || Date.now() - parseInt(lastRedirect) > 10000) {
@@ -116,7 +116,7 @@
     document.getElementById("logoutBtn").onclick = function () {
       localStorage.removeItem("id_token");
       localStorage.removeItem("access_token");
-      window.location.href = `${COGNITO_DOMAIN}/logout?client_id=${CLIENT_ID}&logout_uri=` + encodeURIComponent(REDIRECT_URI);
+      window.location.href = `${COGNITO_DOMAIN}/logout?client_id=${CLIENT_ID}&logout_uri=${REDIRECT_URI}`;
     };
 
     (async function () {
