@@ -39,7 +39,7 @@
         return JSON.parse(decoded);
       } catch (e) {
         console.warn("Failed to decode JWT:", e);
-        return null;
+        return {};
       }
     }
 
@@ -73,17 +73,19 @@
             return;
           }
 
-          if (tokenData.access_token) {
-            localStorage.setItem("access_token", tokenData.access_token);
-            const decoded = decodeJwt(tokenData.access_token);
-            console.log("[Auth] Access token saved ✅");
-            console.log("[Auth] Decoded token payload:", decoded);
-
-            window.history.replaceState({}, document.title, REDIRECT_URI);
+          if (tokenData.id_token) {
+            localStorage.setItem("id_token", tokenData.id_token);
+            const decoded = decodeJwt(tokenData.id_token);
+            console.log("[Auth] ID token saved ✅");
+            console.log("[Auth] Token use:", decoded.token_use);
+            console.log("[Auth] Cognito username/email:", decoded["cognito:username"], decoded.email);
           } else {
-            console.error("[Auth] No access_token found", tokenData);
-            alert("Failed to log in: " + (tokenData.error_description || "Unknown error"));
+            console.error("[Auth] No id_token found", tokenData);
+            alert("Login failed: No ID token returned.");
+            return;
           }
+
+          window.history.replaceState({}, document.title, REDIRECT_URI);
         } catch (err) {
           console.error("[Auth] Token exchange failed:", err);
           alert("OAuth error: " + err.message);
@@ -92,8 +94,9 @@
     }
 
     async function ensureLoggedIn() {
-      if (!localStorage.getItem("access_token")) {
-        const loginUrl = COGNITO_DOMAIN + "/login?response_type=code&client_id=" + CLIENT_ID + "&redirect_uri=" + encodeURIComponent(REDIRECT_URI);
+      const token = localStorage.getItem("id_token");
+      if (!token) {
+        const loginUrl = `${COGNITO_DOMAIN}/login?response_type=code&client_id=${CLIENT_ID}&redirect_uri=${encodeURIComponent(REDIRECT_URI)}`;
         const lastRedirect = sessionStorage.getItem("last_redirect");
 
         if (!lastRedirect || Date.now() - parseInt(lastRedirect) > 10000) {
@@ -101,13 +104,19 @@
           window.location.href = loginUrl;
         }
       } else {
+        const decoded = decodeJwt(token);
+        console.log("[Auth] Logged in as:", decoded["cognito:username"] || "unknown", "| Token use:", decoded.token_use);
+        if (decoded.token_use !== "id") {
+          console.warn("[Auth] ⚠️ Token is not an ID token. API calls may fail.");
+        }
         document.getElementById("logoutBtn").style.display = "inline-block";
       }
     }
 
     document.getElementById("logoutBtn").onclick = function () {
+      localStorage.removeItem("id_token");
       localStorage.removeItem("access_token");
-      window.location.href = COGNITO_DOMAIN + "/logout?client_id=" + CLIENT_ID + "&logout_uri=" + encodeURIComponent(REDIRECT_URI);
+      window.location.href = `${COGNITO_DOMAIN}/logout?client_id=${CLIENT_ID}&logout_uri=${encodeURIComponent(REDIRECT_URI)}`;
     };
 
     (async function () {
@@ -133,10 +142,17 @@
     form.addEventListener('submit', async (e) => {
       e.preventDefault();
       const files = fileInput.files;
-      const token = localStorage.getItem("access_token");
+      const token = localStorage.getItem("id_token");
 
       if (!files.length) return alert("Please choose one or more files.");
       if (!token) return alert("You're not logged in.");
+
+      const decoded = decodeJwt(token);
+      console.log("[Upload] Using token_use:", decoded.token_use);
+      if (decoded.token_use !== "id") {
+        alert("Invalid token type. Please log in again.");
+        return;
+      }
 
       urlDisplay.innerHTML = "";
 
