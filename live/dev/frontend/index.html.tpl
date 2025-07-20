@@ -28,7 +28,7 @@
 
   <script>
     const API_URL = "__API_URL__";
-    const COGNITO_DOMAIN = "__COGNITO_DOMAIN__"; // e.g., https://your-domain.auth.ap-southeast-2.amazoncognito.com
+    const COGNITO_DOMAIN = "__COGNITO_DOMAIN__";
     const CLIENT_ID = "__CLIENT_ID__";
     const REDIRECT_URI = window.location.origin;
 
