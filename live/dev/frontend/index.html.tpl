@@ -32,13 +32,23 @@
     const CLIENT_ID = "61ft4rv9n3ksikh5arn5ij8k90";
     const REDIRECT_URI = window.location.origin;
 
+    function decodeJwt(token) {
+      try {
+        const payload = token.split('.')[1];
+        const decoded = atob(payload.replace(/-/g, '+').replace(/_/g, '/'));
+        return JSON.parse(decoded);
+      } catch (e) {
+        console.warn("Failed to decode JWT:", e);
+        return null;
+      }
+    }
+
     async function handleCognitoLoginRedirect() {
       const params = new URLSearchParams(window.location.search);
       const code = params.get("code");
 
       if (code) {
-        const redirect_uri = REDIRECT_URI;
-
+        console.log("[Auth] Got code from redirect:", code);
         try {
           const tokenRes = await fetch(COGNITO_DOMAIN + "/oauth2/token", {
             method: "POST",
@@ -46,37 +56,43 @@
             body: new URLSearchParams({
               grant_type: "authorization_code",
               client_id: CLIENT_ID,
-              redirect_uri: redirect_uri,
+              redirect_uri: REDIRECT_URI,
               code: code
             })
           });
 
           const text = await tokenRes.text();
-          console.log("Token endpoint raw response:", text);
+          console.log("[Auth] Raw token response:", text);
 
           let tokenData;
           try {
             tokenData = JSON.parse(text);
           } catch {
-            alert("Invalid token response: " + text);
+            console.error("[Auth] Failed to parse token response:", text);
+            alert("Invalid token response");
             return;
           }
 
-          if (tokenData.id_token) {
-            // ✅ Store only the id_token for API Gateway use
-            localStorage.setItem("id_token", tokenData.id_token);
-            window.history.replaceState({}, document.title, redirect_uri);
+          if (tokenData.access_token) {
+            localStorage.setItem("access_token", tokenData.access_token);
+            const decoded = decodeJwt(tokenData.access_token);
+            console.log("[Auth] Access token saved ✅");
+            console.log("[Auth] Decoded token payload:", decoded);
+
+            window.history.replaceState({}, document.title, REDIRECT_URI);
           } else {
+            console.error("[Auth] No access_token found", tokenData);
             alert("Failed to log in: " + (tokenData.error_description || "Unknown error"));
           }
         } catch (err) {
+          console.error("[Auth] Token exchange failed:", err);
           alert("OAuth error: " + err.message);
         }
       }
     }
 
     async function ensureLoggedIn() {
-      if (!localStorage.getItem("id_token")) {
+      if (!localStorage.getItem("access_token")) {
         const loginUrl = COGNITO_DOMAIN + "/login?response_type=code&client_id=" + CLIENT_ID + "&redirect_uri=" + encodeURIComponent(REDIRECT_URI);
         const lastRedirect = sessionStorage.getItem("last_redirect");
 
@@ -90,17 +106,15 @@
     }
 
     document.getElementById("logoutBtn").onclick = function () {
-      localStorage.removeItem("id_token");
+      localStorage.removeItem("access_token");
       window.location.href = COGNITO_DOMAIN + "/logout?client_id=" + CLIENT_ID + "&logout_uri=" + encodeURIComponent(REDIRECT_URI);
     };
 
-    // MAIN LOGIN FLOW
     (async function () {
       await handleCognitoLoginRedirect();
       await ensureLoggedIn();
     })();
 
-    // Upload logic
     const form = document.getElementById('uploadForm');
     const fileInput = document.getElementById('fileInput');
     const preview = document.getElementById('preview');
@@ -119,7 +133,7 @@
     form.addEventListener('submit', async (e) => {
       e.preventDefault();
       const files = fileInput.files;
-      const token = localStorage.getItem("id_token"); // ✅ API Gateway expects id_token
+      const token = localStorage.getItem("access_token");
 
       if (!files.length) return alert("Please choose one or more files.");
       if (!token) return alert("You're not logged in.");
@@ -132,6 +146,8 @@
         urlDisplay.appendChild(status);
 
         try {
+          console.log("[Upload] Requesting upload URL for", file.name);
+
           const query = new URLSearchParams({
             filename: file.name,
             content_type: file.type,
@@ -146,28 +162,33 @@
           });
 
           if (!response.ok) {
+            const errorText = await response.text();
+            console.error("[Upload] Failed to get upload URL for", file.name, response.status, errorText);
             status.textContent = "❌ Failed to get upload URL for " + file.name;
             status.classList.add("error");
             continue;
           }
 
           const data = await response.json();
-          const upload_url = data.upload_url;
+          console.log("[Upload] Got presigned URL for", file.name, data.upload_url);
 
-          const uploadRes = await fetch(upload_url, {
+          const uploadRes = await fetch(data.upload_url, {
             method: 'PUT',
             body: file
           });
 
           if (uploadRes.ok) {
-            const cleanUrl = upload_url.split("?")[0];
+            const cleanUrl = data.upload_url.split("?")[0];
+            console.log("[Upload] Upload success ✅", file.name, cleanUrl);
             status.innerHTML = "✅ <strong>" + file.name + ":</strong> <a href=\"" + cleanUrl + "\" target=\"_blank\">" + cleanUrl + "</a>";
             status.classList.add("success");
           } else {
+            console.error("[Upload] PUT failed for", file.name, uploadRes.status);
             status.textContent = "❌ Upload failed for " + file.name;
             status.classList.add("error");
           }
         } catch (err) {
+          console.error("[Upload] Exception during upload for", file.name, err);
           status.textContent = "❌ Error uploading " + file.name + ": " + err.message;
           status.classList.add("error");
         }
