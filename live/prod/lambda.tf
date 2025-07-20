@@ -17,6 +17,19 @@ resource "aws_iam_role" "s3_event_lambda_role" {
   }
 }
 
+# For the event logger Lambda (from event_logger.py)
+data "archive_file" "s3_event_lambda_zip" {
+  type        = "zip"
+  source_dir  = "${path.module}/lambda/event_logger"
+  output_path = "${path.module}/zips/s3_event_logger.zip"
+}
+
+# For the uploader Lambda (from upload_handler.py)
+data "archive_file" "upload_lambda_zip" {
+  type        = "zip"
+  source_dir  = "${path.module}/lambda/upload_handler"
+  output_path = "${path.module}/zips/upload_handler.zip"
+}
 resource "aws_lambda_function" "s3_event_logger" {
   function_name = "s3-event-logger"
   handler       = "event_logger.lambda_handler"
@@ -64,20 +77,6 @@ resource "aws_lambda_function" "image_uploader" {
   lifecycle {
     create_before_destroy = true
   }
-}
-
-# For the event logger Lambda (from event_logger.py)
-data "archive_file" "s3_event_lambda_zip" {
-  type        = "zip"
-  source_dir  = "${path.module}/lambda/event_logger"
-  output_path = "${path.module}/zips/s3_event_logger.zip"
-}
-
-# For the uploader Lambda (from upload_handler.py)
-data "archive_file" "upload_lambda_zip" {
-  type        = "zip"
-  source_dir  = "${path.module}/lambda/upload_handler"
-  output_path = "${path.module}/zips/upload_handler.zip"
 }
 
 resource "aws_iam_role" "image_uploader_lambda_exec_role" {
