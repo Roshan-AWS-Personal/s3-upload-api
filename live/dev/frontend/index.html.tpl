@@ -31,7 +31,6 @@
     const COGNITO_DOMAIN = "${COGNITO_DOMAIN}";
     const CLIENT_ID = "${CLIENT_ID}";
     const REDIRECT_URI = "${REDIRECT_URI}";
-    const LOGOUT_URI = "https://d3oxbj8znkj30z.cloudfront.net";
 
     function decodeJwt(token) {
       try {
@@ -117,7 +116,7 @@
     document.getElementById("logoutBtn").onclick = function () {
       localStorage.removeItem("id_token");
       localStorage.removeItem("access_token");
-      window.location.href = `${COGNITO_DOMAIN}/logout?client_id=${CLIENT_ID}&logout_uri=${LOGOUT_URI}`;
+      window.location.href = `${COGNITO_DOMAIN}/logout?client_id=${CLIENT_ID}&logout_uri=${REDIRECT_URI}`;
     };
 
     (async function () {
