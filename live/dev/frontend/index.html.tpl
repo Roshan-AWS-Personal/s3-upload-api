@@ -27,9 +27,9 @@
   </div>
 
   <script>
-    const API_URL = "https://n3bcr23wm1.execute-api.ap-southeast-2.amazonaws.com/dev/upload";
-    const COGNITO_DOMAIN = "https://upload-auth.auth.ap-southeast-2.amazoncognito.com";
-    const CLIENT_ID = "61ft4rv9n3ksikh5arn5ij8k90";
+    const API_URL = "${API_URL}";
+    const COGNITO_DOMAIN = "${COGNITO_DOMAIN}";
+    const CLIENT_ID = "${CLIENT_ID}";
     const REDIRECT_URI = "${REDIRECT_URI}";
     const LOGOUT_URI = "${LOGOUT_URI}";
 
