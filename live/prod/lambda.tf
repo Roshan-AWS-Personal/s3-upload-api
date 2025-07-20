@@ -107,7 +107,7 @@ resource "aws_lambda_function" "s3_event_logger" {
 }
 
 resource "aws_lambda_function" "image_uploader" {
-  function_name    = "image-uploader-dev"
+  function_name    = "image-uploader-prod"
   kms_key_arn      = aws_kms_key.lambda_key.arn
   filename         = data.archive_file.upload_lambda_zip.output_path
   source_code_hash = data.archive_file.upload_lambda_zip.output_base64sha256
