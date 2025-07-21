@@ -25,3 +25,30 @@ variable "stage_name" {
   type        = string
   default     = "dev"
 }
+
+variable "upload_api_url" {
+  description = "URL for the API Gateway"
+  type        = string
+  default     = "dev"
+}
+
+variable "login_redirect_url" {
+  description = "Frontend URL to redirect after successful login"
+  type        = string
+}
+
+variable "logout_redirect_url" {
+  description = "Frontend URL to redirect after logout"
+  type        = string
+}
+
+variable "cognito_domain" {
+  description = "Cognito Hosted UI domain"
+  type        = string
+}
+
+variable "cognito_client_id" {
+  description = "Cognito App Client ID"
+  type        = string
+}
+

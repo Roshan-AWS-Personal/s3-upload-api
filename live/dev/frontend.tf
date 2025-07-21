@@ -42,8 +42,14 @@ resource "aws_s3_bucket_policy" "allow_public_read" {
 }
 data "template_file" "index_html" {
   template = file("${path.module}/frontend/index.html.tpl")
+
   vars = {
-    BEARER_TOKEN = var.upload_api_secret
+    BEARER_TOKEN    = var.upload_api_secret
+    API_URL         = var.upload_api_url
+    COGNITO_DOMAIN  = var.cognito_domain
+    CLIENT_ID       = var.cognito_client_id
+    REDIRECT_URI    = var.login_redirect_url
+    LOGOUT_URI      = var.logout_redirect_url
   }
 }
 

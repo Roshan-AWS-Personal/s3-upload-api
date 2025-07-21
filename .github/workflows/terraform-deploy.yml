@@ -31,6 +31,8 @@ jobs:
       AWS_SECRET_ACCESS_KEY_PROD: ${{ secrets.AWS_SECRET_ACCESS_KEY_PROD }}
       AWS_UPLOAD_API_SECRET_DEV: ${{ secrets.UPLOAD_API_SECRET_DEV }}
       AWS_UPLOAD_API_SECRET_PROD: ${{ secrets.UPLOAD_API_SECRET_PROD }}
+      AWS_UPLOAD_API_URL_DEV:    ${{ secrets.AWS_API_URL_DEV }}
+      AWS_UPLOAD_API_URL_PROD:   ${{ secrets.AWS_API_URL_PROD }}
 
       # Backend resources
       STATE_BUCKET_DEV:   ${{ secrets.STATE_BUCKET_DEV }}
@@ -77,52 +79,37 @@ jobs:
         working-directory: ${{ steps.env.outputs.WORK_DIR }}
         run: terraform validate
 
-
       - name: Terraform Plan
         working-directory: ${{ steps.env.outputs.WORK_DIR }}
         run: |
           if [[ "${{ github.event.inputs.environment }}" == "dev" ]]; then
             SECRET=${{ env.AWS_UPLOAD_API_SECRET_DEV }}
+            API_URL=${{ env.AWS_UPLOAD_API_URL_DEV }}
+            COGNITO_CLIENT_ID=${{ secrets.COGNITO_CLIENT_ID_DEV }}
+            COGNITO_DOMAIN=${{ secrets.COGNITO_DOMAIN_DEV }}
+            LOGIN_URL=${{ secrets.LOGIN_URL_DEV }}
           else
             SECRET=${{ env.AWS_UPLOAD_API_SECRET_PROD }}
+            API_URL=${{ env.AWS_UPLOAD_API_URL_PROD }}
+            COGNITO_CLIENT_ID=${{ secrets.COGNITO_CLIENT_ID_PROD }}
+            COGNITO_DOMAIN=${{ secrets.COGNITO_DOMAIN_PROD }}
+            LOGIN_URL=${{ secrets.LOGIN_URL_PROD }}
           fi
-          echo "Deploying with secret: $SECRET"
+
           terraform plan \
             -var="aws_region=${{ env.AWS_REGION }}" \
             -var="state_bucket=${{ env.STATE_BUCKET }}" \
             -var="state_prefix=${{ env.STATE_PREFIX }}" \
             -var="dynamodb_table=${{ env.DYNAMODB_TABLE }}" \
             -var="upload_api_secret=$SECRET" \
+            -var="upload_api_url=$API_URL" \
+            -var="login_redirect_url=$LOGIN_URL" \
+            -var="logout_redirect_url=$LOGIN_URL" \
+            -var="cognito_client_id=$COGNITO_CLIENT_ID" \
+            -var="cognito_domain=$COGNITO_DOMAIN" \
             -out=tfplan
-
 
       - name: Terraform Apply (manual)
         if: ${{ github.event.inputs.confirm_apply == 'true' }}
         working-directory: ${{ steps.env.outputs.WORK_DIR }}
-        run: |
-          if [[ "${{ github.event.inputs.environment }}" == "dev" ]]; then
-            SECRET="$AWS_UPLOAD_API_SECRET_DEV"
-          else
-            SECRET="$AWS_UPLOAD_API_SECRET_PROD"
-          fi
-
-          terraform apply -auto-approve tfplan
-
-      - name: Inject API key and deploy frontend
-        if: ${{ github.event.inputs.confirm_apply == 'true' }}
-        run: |
-          echo "Injecting API key into HTML..."
-          if [[ "${{ github.event.inputs.environment }}" == "dev" ]]; then
-            TOKEN=${{ env.AWS_UPLOAD_API_SECRET_DEV }}
-            echo "TF_VAR_upload_api_secret=$TOKEN" >> $GITHUB_ENV
-            BUCKET="image-uploader-frontend-dev"
-          else
-            TOKEN=${{ env.AWS_UPLOAD_API_SECRET_PROD }}
-            echo "TF_VAR_upload_api_secret=$TOKEN" >> $GITHUB_ENV
-            BUCKET="image-uploader-frontend-prod"
-          fi
-
-          sed "s|__API_KEY__|Bearer $TOKEN|g" live/${{ github.event.inputs.environment }}/frontend/index.html.tpl > live/${{ github.event.inputs.environment }}/frontend/index.html
-
-          echo "Uploading index.html to S3..."
-          aws s3 cp live/${{ github.event.inputs.environment }}/frontend/index.html s3://$BUCKET/index.html --region ${{ env.AWS_REGION }} --content-type "text/html"
+        run: terraform apply -auto-approve tfplan
