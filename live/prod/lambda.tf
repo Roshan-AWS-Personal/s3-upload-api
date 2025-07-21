@@ -138,7 +138,7 @@ resource "aws_kms_alias" "lambda_key_alias" {
 data "aws_caller_identity" "current" {}
 
 resource "aws_lambda_function" "image_uploader" {
-  function_name = "image-uploader-prod"
+  function_name = "image-uploader-${var.env}"
   kms_key_arn   = aws_kms_key.lambda_key.arn
 
   filename         = data.archive_file.upload_lambda_zip.output_path

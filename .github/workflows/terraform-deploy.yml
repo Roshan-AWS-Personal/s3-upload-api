@@ -87,13 +87,13 @@ jobs:
             API_URL=${{ env.AWS_UPLOAD_API_URL_DEV }}
             COGNITO_CLIENT_ID=${{ secrets.COGNITO_CLIENT_ID_DEV }}
             COGNITO_DOMAIN=${{ secrets.COGNITO_DOMAIN_DEV }}
-            LOGIN_URL="https://d3oxbj8znjk30z.cloudfront.net"
+            LOGIN_URL=${{ secrets.LOGIN_URL_DEV }}
           else
             SECRET=${{ env.AWS_UPLOAD_API_SECRET_PROD }}
             API_URL=${{ env.AWS_UPLOAD_API_URL_PROD }}
             COGNITO_CLIENT_ID=${{ secrets.COGNITO_CLIENT_ID_PROD }}
             COGNITO_DOMAIN=${{ secrets.COGNITO_DOMAIN_PROD }}
-            LOGIN_URL="https://d37ne0mpyi4d5o.cloudfront.net"
+            LOGIN_URL=${{ secrets.LOGIN_URL_PROD }}
           fi
 
           terraform plan \
