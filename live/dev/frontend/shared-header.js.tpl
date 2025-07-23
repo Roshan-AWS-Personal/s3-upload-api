@@ -16,6 +16,6 @@ function injectHeader(activePage) {
   document.getElementById("logoutBtn").onclick = function () {
     localStorage.removeItem("id_token");
     localStorage.removeItem("access_token");
-    window.location.href = `${COGNITO_DOMAIN}/logout?client_id=${CLIENT_ID}&logout_uri=${REDIRECT_URI}`;
+    window.location.href = "\${COGNITO_DOMAIN}/logout?client_id=\${CLIENT_ID}&logout_uri=\${REDIRECT_URI}";
   };
 }
