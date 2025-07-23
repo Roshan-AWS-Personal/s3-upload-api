@@ -29,42 +29,41 @@
 
   <script>
     const API_URL = "${API_URL}"; // replace with actual
-    const token = localStorage.getItem('access_token'); // assuming this is how you're storing it
+    const token = localStorage.getItem("access_token"); // assuming this is how you're storing it
 
     if (!token) {
-      window.location.href = '/login.html'; // or your Cognito Hosted UI
+      window.location.href = "/login.html"; // or your Cognito Hosted UI
     }
 
     fetch(API_URL, {
-      method: 'GET',
+      method: "GET",
       headers: {
-        'Authorization': token
+        "Authorization": token
       }
     })
-    .then(res => {
-      if (!res.ok) throw new Error('Auth failed or bad response');
+    .then(function(res) {
+      if (!res.ok) throw new Error("Auth failed or bad response");
       return res.json();
     })
-    .then(data => {
-      document.getElementById('loading').style.display = 'none';
-      const table = document.getElementById('uploadsTable');
-      const tbody = document.getElementById('uploadsBody');
-      table.style.display = 'table';
+    .then(function(data) {
+      document.getElementById("loading").style.display = "none";
+      var table = document.getElementById("uploadsTable");
+      var tbody = document.getElementById("uploadsBody");
+      table.style.display = "table";
 
-      data.forEach(item => {
-        const row = document.createElement('tr');
-        row.innerHTML = `
-          <td>\${item.filename}</td>
-          <td>\${item.uploader || '-'}</td>
-          <td>\${(item.size / 1024).toFixed(1)}</td>
-          <td>\${new Date(item.timestamp).toLocaleString()}</td>
-          <td><a href="\${item.s3_url}" target="_blank">View</a></td>
-        `;
+      data.forEach(function(item) {
+        var row = document.createElement("tr");
+        row.innerHTML =
+          "<td>" + item.filename + "</td>" +
+          "<td>" + (item.uploader || "-") + "</td>" +
+          "<td>" + (item.size / 1024).toFixed(1) + "</td>" +
+          "<td>" + new Date(item.timestamp).toLocaleString() + "</td>" +
+          "<td><a href=\"" + item.s3_url + "\" target=\"_blank\">View</a></td>";
         tbody.appendChild(row);
       });
     })
-    .catch(err => {
-      document.getElementById('loading').textContent = 'Failed to load uploads.';
+    .catch(function(err) {
+      document.getElementById("loading").textContent = "Failed to load uploads.";
       console.error(err);
     });
   </script>
