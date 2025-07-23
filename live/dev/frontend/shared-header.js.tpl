@@ -9,8 +9,8 @@ function injectHeader(activePage) {
   const container = document.createElement("nav");
   container.style = "margin-bottom: 2em; font-family: sans-serif;";
   container.innerHTML = `
-    <a href="upload.html" style="margin-right: 1em; \${uploadStyle}">Upload</a>
-    <a href="list.html" style="margin-right: 1em; \${listStyle}">Downloads</a>
+    <a href="upload.html" style="margin-right: 1em; $${uploadStyle}">Upload</a>
+    <a href="list.html" style="margin-right: 1em; $${listStyle}">Downloads</a>
     <button id="logoutBtn" style="margin-left: 2em;">Logout</button>
     <hr style="margin-top: 1em;" />
   `;
