@@ -1,7 +1,7 @@
 function injectHeader(activePage) {
-  const COGNITO_DOMAIN = "${COGNITO_DOMAIN}";
-  const CLIENT_ID = "${CLIENT_ID}";
-  const REDIRECT_URI = "${REDIRECT_URI}";
+  const COGNITO_DOMAIN = "$${COGNITO_DOMAIN}";
+  const CLIENT_ID = "$${CLIENT_ID}";
+  const REDIRECT_URI = "$${REDIRECT_URI}";
 
   const container = document.createElement("nav");
   container.style = "margin-bottom: 2em; font-family: sans-serif;";
