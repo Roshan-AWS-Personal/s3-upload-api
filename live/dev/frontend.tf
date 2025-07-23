@@ -66,7 +66,6 @@ resource "aws_s3_object" "list_html" {
   key    = "list.html"
   content = data.template_file.list_html.rendered
   content_type = "text/html"
-  acl    = "public-read"
 }
 
 data "template_file" "list_html" {
