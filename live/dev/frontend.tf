@@ -70,7 +70,7 @@ resource "aws_s3_object" "list_html" {
 }
 
 data "template_file" "list_html" {
-  template = file("${path.module}/list.html.tpl")
+  template = file("${path.module}/frontend/list.html.tpl")
 
   vars = {
     api_url = var.upload_api_url  # or whatever variable you’ve named it
