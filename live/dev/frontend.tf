@@ -77,7 +77,7 @@ data "template_file" "list_html" {
 }
 
 data "template_file" "shared_header_js" {
-  template = file("${path.module}/frontened/shared-header.js.tpl")
+  template = file("${path.module}/frontend/shared-header.js.tpl")
   vars = {
     COGNITO_DOMAIN = var.cognito_domain
     CLIENT_ID      = var.cognito_client_id
