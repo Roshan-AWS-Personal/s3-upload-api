@@ -242,3 +242,59 @@ resource "aws_iam_role_policy" "dynamodb_write_policy" {
     ]
   })
 }
+
+resource "aws_lambda_function" "list_uploads" {
+  function_name = "list_uploads"
+  runtime       = "python3.12"
+  role          = aws_iam_role.list_uploads_exec_role.arn
+  handler       = "list_uploads.lambda_handler"
+
+  filename         = data.archive_file.list_uploads_zip.output_path
+  source_code_hash = data.archive_file.list_uploads_zip.output_base64sha256
+
+  environment {
+    variables = {
+      DDB_TABLE = "file_upload_metadata"
+    }
+  }
+}
+
+data "archive_file" "list_uploads_zip" {
+  type        = "zip"
+  source_dir  = "${path.module}/lambda/list_uploads"
+  output_path = "${path.module}/zips/list_uploads.zip"
+}
+
+resource "aws_iam_role_policy" "lambda_dynamodb_read_policy" {
+  name = "lambda-dynamodb-read-policy"
+  role = aws_iam_role.list_uploads_exec_role.name
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Action = [
+          "dynamodb:Query",
+          "dynamodb:Scan"
+        ]
+        Effect   = "Allow"
+        Resource = aws_dynamodb_table.file_upload_metadata.arn
+      }
+    ]
+  })
+}
+
+resource "aws_iam_role" "list_uploads_exec_role" {
+  name = "list-uploads-lambda-role"
+
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17",
+    Statement = [{
+      Action = "sts:AssumeRole",
+      Effect = "Allow",
+      Principal = {
+        Service = "lambda.amazonaws.com"
+      }
+    }]
+  })
+}
