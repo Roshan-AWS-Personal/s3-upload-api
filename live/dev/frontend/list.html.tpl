@@ -28,7 +28,7 @@
   </table>
 
   <script>
-    const API_URL = "${API_URL}";; // replace with actual
+    const API_URL = "${API_URL}"; // replace with actual
     const token = localStorage.getItem('access_token'); // assuming this is how you're storing it
 
     if (!token) {
@@ -54,10 +54,10 @@
       data.forEach(item => {
         const row = document.createElement('tr');
         row.innerHTML = `
-          <td>${item.filename}</td>
-          <td>${item.uploader || '-'}</td>
-          <td>${(item.size / 1024).toFixed(1)}</td>
-          <td>${new Date(item.timestamp).toLocaleString()}</td>
+          <td>$${item.filename}</td>
+          <td>$${item.uploader || '-'}</td>
+          <td>$${(item.size / 1024).toFixed(1)}</td>
+          <td>$${new Date(item.timestamp).toLocaleString()}</td>
           <td><a href="${item.s3_url}" target="_blank">View</a></td>
         `;
         tbody.appendChild(row);

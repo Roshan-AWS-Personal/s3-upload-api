@@ -73,7 +73,7 @@ data "template_file" "list_html" {
   template = file("${path.module}/frontend/list.html.tpl")
 
   vars = {
-    api_url = var.upload_api_url  # or whatever variable you’ve named it
+    API_URL = var.upload_api_url  # or whatever variable you’ve named it
   }
 }
 
