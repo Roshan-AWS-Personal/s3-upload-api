@@ -54,11 +54,11 @@
       data.forEach(item => {
         const row = document.createElement('tr');
         row.innerHTML = `
-          <td>$${item.filename}</td>
-          <td>$${item.uploader || '-'}</td>
-          <td>$${(item.size / 1024).toFixed(1)}</td>
-          <td>$${new Date(item.timestamp).toLocaleString()}</td>
-          <td><a href="${item.s3_url}" target="_blank">View</a></td>
+          <td>\${item.filename}</td>
+          <td>\${item.uploader || '-'}</td>
+          <td>\${(item.size / 1024).toFixed(1)}</td>
+          <td>\${new Date(item.timestamp).toLocaleString()}</td>
+          <td><a href="\${item.s3_url}" target="_blank">View</a></td>
         `;
         tbody.appendChild(row);
       });
