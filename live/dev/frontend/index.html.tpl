@@ -137,7 +137,7 @@
 
     function showStatus(message, type = "") {
       const div = document.createElement("div");
-      div.className = `status ${type}`;
+      div.className = `status $${type}`;
       div.innerHTML = message;
       statusContainer.appendChild(div);
     }
