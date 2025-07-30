@@ -32,7 +32,7 @@
     const token = localStorage.getItem("access_token"); // assuming this is how you're storing it
 
     if (!token) {
-      window.location.href = "/index.html"; // or your Cognito Hosted UI
+      window.location.href = "/login.html"; // or your Cognito Hosted UI
     }
 
     fetch(API_URL, {
