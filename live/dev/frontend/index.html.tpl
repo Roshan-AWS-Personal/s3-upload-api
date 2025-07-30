@@ -49,7 +49,7 @@
   </div>
 
   <script>
-    const API_URL = "${API_URL}";
+    const API_URL = "$${API_URL}";
     const fileInput = document.getElementById("fileInput");
     const preview = document.getElementById("preview");
     const uploadForm = document.getElementById("uploadForm");
@@ -92,7 +92,7 @@
             filesize: file.size.toString()
           });
 
-          const presignRes = await fetch(`${API_URL}?$${query.toString()}`, {
+          const presignRes = await fetch(`${API_URL}?${query.toString()}`, {
             method: "GET",
             headers: {
               Authorization: "Bearer " + token
