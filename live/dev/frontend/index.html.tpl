@@ -15,7 +15,7 @@
 </head>
 <body>
   <script src="shared-header.js"></script>
-  <script>injectHeader("upload");</script>
+  <script>injectHeader("index");</script>
 
   <div class="container">
     <h2>Upload Files</h2>
@@ -27,97 +27,54 @@
     <div id="urlDisplay"></div>
   </div>
 
-  <script>
-    const API_URL = "${API_URL}";
+<script>
+  const COGNITO_DOMAIN = "${COGNITO_DOMAIN}";
+  const CLIENT_ID = "${CLIENT_ID}";
+  const REDIRECT_URI = "${REDIRECT_URI}";
 
-    const form = document.getElementById('uploadForm');
-    const fileInput = document.getElementById('fileInput');
-    const preview = document.getElementById('preview');
-    const urlDisplay = document.getElementById('urlDisplay');
+  async function handleCognitoLoginRedirect() {
+    const params = new URLSearchParams(window.location.search);
+    const code = params.get("code");
 
-    function decodeJwt(token) {
+    if (code) {
       try {
-        const payload = token.split('.')[1];
-        const decoded = atob(payload.replace(/-/g, '+').replace(/_/g, '/'));
-        return JSON.parse(decoded);
-      } catch (e) {
-        console.warn("Failed to decode JWT:", e);
-        return {};
+        const tokenRes = await fetch(COGNITO_DOMAIN + "/oauth2/token", {
+          method: "POST",
+          headers: { "Content-Type": "application/x-www-form-urlencoded" },
+          body: new URLSearchParams({
+            grant_type: "authorization_code",
+            client_id: CLIENT_ID,
+            redirect_uri: REDIRECT_URI,
+            code: code
+          })
+        });
+
+        const tokenData = await tokenRes.json();
+        if (tokenData.id_token) {
+          localStorage.setItem("id_token", tokenData.id_token);
+          window.history.replaceState({}, document.title, REDIRECT_URI);
+        } else {
+          alert("Login failed: No ID token returned.");
+        }
+      } catch (err) {
+        alert("OAuth error: " + err.message);
       }
     }
+  }
 
-    fileInput.addEventListener('change', () => {
-      const file = fileInput.files[0];
-      if (file && file.type.startsWith("image/")) {
-        preview.src = URL.createObjectURL(file);
-        preview.style.display = 'block';
-      } else {
-        preview.style.display = 'none';
-      }
-    });
+  async function ensureLoggedIn() {
+    const token = localStorage.getItem("id_token");
+    if (!token) {
+      const loginUrl = `${COGNITO_DOMAIN}/login?response_type=code&client_id=${CLIENT_ID}&redirect_uri=${REDIRECT_URI}&scope=openid+email+profile`;
+      window.location.href = loginUrl;
+    }
+  }
 
-    form.addEventListener('submit', async (e) => {
-      e.preventDefault();
-      const files = fileInput.files;
-      const token = localStorage.getItem("id_token");
-
-      if (!files.length) return alert("Please choose one or more files.");
-      if (!token) return alert("You're not logged in.");
-
-      const decoded = decodeJwt(token);
-      if (decoded.token_use !== "id") {
-        alert("Invalid token type. Please log in again.");
-        return;
-      }
-
-      urlDisplay.innerHTML = "";
-
-      for (const file of files) {
-        const status = document.createElement("p");
-        status.textContent = "Uploading " + file.name + "...";
-        urlDisplay.appendChild(status);
-
-        try {
-          const query = new URLSearchParams({
-            filename: file.name,
-            content_type: file.type,
-            filesize: file.size.toString()
-          });
-
-          const response = await fetch(API_URL + "?" + query.toString(), {
-            method: 'GET',
-            headers: {
-              "Authorization": "Bearer " + token
-            }
-          });
-
-          if (!response.ok) {
-            const errorText = await response.text();
-            status.textContent = "❌ Failed to get upload URL for " + file.name;
-            status.classList.add("error");
-            continue;
-          }
-
-          const data = await response.json();
-          const uploadRes = await fetch(data.upload_url, {
-            method: 'PUT',
-            body: file
-          });
-
-          if (uploadRes.ok) {
-            const cleanUrl = data.upload_url.split("?")[0];
-            status.innerHTML = "✅ <strong>" + file.name + ":</strong> <a href=\"" + cleanUrl + "\" target=\"_blank\">" + cleanUrl + "</a>";
-            status.classList.add("success");
-          } else {
-            status.textContent = "❌ Upload failed for " + file.name;
-            status.classList.add("error");
-          }
-        } catch (err) {
-          status.textContent = "❌ Error uploading " + file.name + ": " + err.message;
-          status.classList.add("error");
-        }
-      }
-    });
-  </script>
+  // Run immediately before upload logic
+  (async function () {
+    await handleCognitoLoginRedirect();
+    await ensureLoggedIn();
+  })();
+</script>
 </body>
 </html>

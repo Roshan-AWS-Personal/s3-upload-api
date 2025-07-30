@@ -3,7 +3,7 @@ function injectHeader(activePage) {
   const CLIENT_ID = "${CLIENT_ID}";
   const REDIRECT_URI = "${REDIRECT_URI}";
 
-  const uploadStyle = activePage === "upload" ? "font-weight: bold;" : "";
+  const uploadStyle = activePage === "index" ? "font-weight: bold;" : "";
   const listStyle = activePage === "list" ? "font-weight: bold;" : "";
 
   const container = document.createElement("nav");
