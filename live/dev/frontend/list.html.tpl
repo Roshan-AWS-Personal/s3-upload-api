@@ -32,7 +32,7 @@
     const token = localStorage.getItem("access_token"); // assuming this is how you're storing it
 
     if (!token) {
-      window.location.href = "/login.html"; // or your Cognito Hosted UI
+        window.location.href = `${COGNITO_DOMAIN}/login?response_type=code&client_id=${CLIENT_ID}&redirect_uri=${REDIRECT_URI}&scope=openid+email+profile`;
     }
 
     fetch(API_URL, {
