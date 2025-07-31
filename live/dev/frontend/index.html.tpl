@@ -38,7 +38,7 @@
     const token = localStorage.getItem("id_token");
     if (!token) {
       const currentUrl = window.location.href;
-      const loginUrl = `${COGNITO_DOMAIN}/login?response_type=code&client_id=${CLIENT_ID}&redirect_uri=${encodeURIComponent(currentUrl)}&scope=openid+email+profile`;
+      const loginUrl = `${COGNITO_DOMAIN}/login?response_type=code&client_id=${CLIENT_ID}&redirect_uri=$${encodeURIComponent(currentUrl)}&scope=openid+email+profile`;
       window.location.href = loginUrl;
     }
 
