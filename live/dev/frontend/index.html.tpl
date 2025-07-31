@@ -35,16 +35,17 @@
   </div>
 
   <script>
-    const API_URL = "${API_URL}";
-    const COGNITO_DOMAIN = "${COGNITO_DOMAIN}";
-    const CLIENT_ID = "${CLIENT_ID}";
-    const REDIRECT_URI = "${REDIRECT_URI}";
-    const LOGOUT_URI = "${LOGOUT_URI}";
+    const API_URL = "$${API_URL}";
+    const COGNITO_DOMAIN = "$${COGNITO_DOMAIN}";
+    const CLIENT_ID = "$${CLIENT_ID}";
+    const REDIRECT_URI = "$${REDIRECT_URI}";
+    const LOGOUT_URI = "$${LOGOUT_URI}";
 
     const token = localStorage.getItem("id_token");
     if (!token) {
-      const currentUrl = window.location.href;
-      const loginUrl = `${COGNITO_DOMAIN}/login?response_type=code&client_id=${CLIENT_ID}&redirect_uri=$${encodeURIComponent(currentUrl)}&scope=openid+email+profile`;
+      const loginUrl = COGNITO_DOMAIN + "/login?response_type=code&client_id=" + CLIENT_ID +
+        "&redirect_uri=" + encodeURIComponent(REDIRECT_URI) +
+        "&scope=openid+email+profile";
       window.location.href = loginUrl;
     }
 
