@@ -82,7 +82,7 @@
 
           if (!presignRes.ok) {
             const errMsg = await presignRes.text();
-            status.innerHTML = String.raw`❌ $${file.name}: Failed to get upload URL<br><small>${errMsg}</small>`;
+            status.innerHTML = String.raw`❌ $${file.name}: Failed to get upload URL<br><small>$${errMsg}</small>`;
             status.classList.add("error");
             continue;
           }
