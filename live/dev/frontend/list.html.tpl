@@ -6,6 +6,9 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <style>
     body { font-family: sans-serif; padding: 2em; }
+    nav { margin-bottom: 2rem; }
+    nav a { margin-right: 1rem; text-decoration: none; color: #0366d6; }
+    nav a:hover { text-decoration: underline; }
     table { width: 100%; border-collapse: collapse; margin-top: 1em; }
     th, td { padding: 0.5em; border: 1px solid #ccc; }
     th { background: #f0f0f0; }
@@ -13,6 +16,11 @@
   </style>
 </head>
 <body>
+
+  <nav>
+    <a href="index.html">Upload</a>
+    <a href="list.html"><strong>View Files</strong></a>
+  </nav>
 
   <h1>Uploaded Files</h1>
   <div id="loading">Loading...</div>
@@ -39,10 +47,7 @@
     const token = localStorage.getItem("access_token");
 
     if (!token) {
-      const loginUrl = COGNITO_DOMAIN + "/login?response_type=code"
-        + "&client_id=" + CLIENT_ID
-        + "&redirect_uri=" + encodeURIComponent(REDIRECT_URI)
-        + "&scope=openid+email+profile";
+      const loginUrl = `${COGNITO_DOMAIN}/login?response_type=code&client_id=${CLIENT_ID}&redirect_uri=${encodeURIComponent(REDIRECT_URI)}&scope=openid+email+profile`;
       window.location.href = loginUrl;
     } else {
       fetch(API_URL, {
