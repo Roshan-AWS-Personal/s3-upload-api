@@ -37,12 +37,11 @@
     const API_URL = "${API_URL}";
     const COGNITO_DOMAIN = "${COGNITO_DOMAIN}";
     const CLIENT_ID = "${CLIENT_ID}";
-    const REDIRECT_URI = "${REDIRECT_URI}";
 
     const token = localStorage.getItem("access_token");
 
     if (!token) {
-      const loginUrl = `${COGNITO_DOMAIN}/login?response_type=code&client_id=${CLIENT_ID}&redirect_uri=${REDIRECT_URI}&scope=openid+email+profile&state=list.html`;
+      const loginUrl = `${COGNITO_DOMAIN}/login?response_type=code&client_id=${CLIENT_ID}&redirect_uri=${encodeURIComponent(window.location.href)}&scope=openid+email+profile`;
       window.location.href = loginUrl;
     } else {
       fetch(API_URL, {
