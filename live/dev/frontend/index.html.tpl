@@ -1,3 +1,4 @@
+<!-- index.html -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -30,14 +31,42 @@
   </div>
 
   <script>
-    const API_URL = "__API_URL__";
-    const COGNITO_DOMAIN = "__COGNITO_DOMAIN__";
-    const CLIENT_ID = "__CLIENT_ID__";
+    const API_URL = "${API_URL}";
+    const COGNITO_DOMAIN = "${COGNITO_DOMAIN}";
+    const CLIENT_ID = "${CLIENT_ID}";
+    const REDIRECT_URI = "${REDIRECT_URI}"; // https://your-cloudfront-domain/
+
+    const params = new URLSearchParams(window.location.search);
+    if (params.has("code")) {
+      const code = params.get("code");
+      const state = params.get("state") || "index.html";
+
+      fetch(`${COGNITO_DOMAIN}/oauth2/token`, {
+        method: "POST",
+        headers: { "Content-Type": "application/x-www-form-urlencoded" },
+        body: new URLSearchParams({
+          grant_type: "authorization_code",
+          client_id: CLIENT_ID,
+          redirect_uri: REDIRECT_URI,
+          code: code
+        })
+      })
+        .then(res => res.json())
+        .then(data => {
+          if (data.id_token && data.access_token) {
+            localStorage.setItem("id_token", data.id_token);
+            localStorage.setItem("access_token", data.access_token);
+            window.location.href = state;
+          } else {
+            console.error("Token error", data);
+          }
+        })
+        .catch(err => console.error("Login error", err));
+    }
 
     const token = localStorage.getItem("id_token");
     if (!token) {
-      const currentUrl = window.location.href;
-      const loginUrl = COGNITO_DOMAIN + "/login?response_type=code&client_id=" + CLIENT_ID + "&redirect_uri=" + encodeURIComponent(currentUrl) + "&scope=openid+email+profile";
+      const loginUrl = `${COGNITO_DOMAIN}/login?response_type=code&client_id=${CLIENT_ID}&redirect_uri=${encodeURIComponent(REDIRECT_URI)}&scope=openid+email+profile&state=index.html`;
       window.location.href = loginUrl;
     }
 
@@ -58,16 +87,15 @@
 
     uploadForm.addEventListener("submit", async (e) => {
       e.preventDefault();
-
       const files = fileInput.files;
       statusContainer.innerHTML = "";
 
       if (!files.length) {
-        return showStatus("❌ Please select one or more files to upload.", "error");
+        return showStatus("\u274C Please select one or more files to upload.", "error");
       }
 
       for (const file of files) {
-        const status = createStatusBlock(file.name + ": Uploading...");
+        const status = createStatusBlock(`${file.name}: Uploading...`);
         try {
           const query = new URLSearchParams({
             filename: file.name,
@@ -75,14 +103,14 @@
             filesize: file.size.toString()
           });
 
-          const presignRes = await fetch(API_URL + "?" + query.toString(), {
+          const presignRes = await fetch(`${API_URL}?${query.toString()}`, {
             method: "GET",
             headers: { Authorization: "Bearer " + token }
           });
 
           if (!presignRes.ok) {
             const errMsg = await presignRes.text();
-            status.innerHTML = "❌ " + file.name + ": Failed to get upload URL<br><small>" + errMsg + "</small>";
+            status.innerHTML = `\u274C ${file.name}: Failed to get upload URL<br><small>${errMsg}</small>`;
             status.classList.add("error");
             continue;
           }
@@ -95,14 +123,14 @@
 
           if (uploadRes.ok) {
             const fileUrl = upload_url.split("?")[0];
-            status.innerHTML = "✅ <strong>" + file.name + "</strong>: <a href=\"" + fileUrl + "\" target=\"_blank\">" + fileUrl + "</a>";
+            status.innerHTML = `\u2705 <strong>${file.name}</strong>: <a href="${fileUrl}" target="_blank">${fileUrl}</a>`;
             status.classList.add("success");
           } else {
-            status.innerHTML = "❌ " + file.name + ": Upload failed (status " + uploadRes.status + ")";
+            status.innerHTML = `\u274C ${file.name}: Upload failed (status ${uploadRes.status})`;
             status.classList.add("error");
           }
         } catch (err) {
-          status.innerHTML = "❌ " + file.name + ": Error: " + err.message;
+          status.innerHTML = `\u274C ${file.name}: Error: ${err.message}`;
           status.classList.add("error");
         }
       }
@@ -118,7 +146,7 @@
 
     function showStatus(message, type = "") {
       const div = document.createElement("div");
-      div.className = "status " + type;
+      div.className = `status ${type}`;
       div.innerHTML = message;
       statusContainer.appendChild(div);
     }

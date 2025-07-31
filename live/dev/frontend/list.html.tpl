@@ -34,14 +34,15 @@
   </table>
 
   <script>
-    const API_URL = "${API_URL}";
-    const COGNITO_DOMAIN = "${COGNITO_DOMAIN}";
-    const CLIENT_ID = "${CLIENT_ID}";
+    const API_URL = "__API_URL__";
+    const COGNITO_DOMAIN = "__COGNITO_DOMAIN__";
+    const CLIENT_ID = "__CLIENT_ID__";
 
     const token = localStorage.getItem("access_token");
 
     if (!token) {
-      const loginUrl = `${COGNITO_DOMAIN}/login?response_type=code&client_id=${CLIENT_ID}&redirect_uri=` + encodeURIComponent(window.location.href) + `&scope=openid+email+profile`;
+      const redirectUrl = encodeURIComponent(window.location.href);
+      const loginUrl = `${COGNITO_DOMAIN}/login?response_type=code&client_id=${CLIENT_ID}&redirect_uri=${redirectUrl}&scope=openid+email+profile`;
       window.location.href = loginUrl;
     } else {
       fetch(API_URL, {
@@ -67,7 +68,7 @@
             "<td>" + (item.uploader || "-") + "</td>" +
             "<td>" + (item.size / 1024).toFixed(1) + "</td>" +
             "<td>" + new Date(item.timestamp).toLocaleString() + "</td>" +
-            "<td><a href=\"" + item.s3_url + "\" target=\"_blank\">View</a></td>";
+            "<td><a href='" + item.s3_url + "' target='_blank'>View</a></td>";
           tbody.appendChild(row);
         });
       })
