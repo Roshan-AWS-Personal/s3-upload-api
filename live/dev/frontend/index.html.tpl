@@ -41,6 +41,42 @@
     const REDIRECT_URI = "${REDIRECT_URI}";
     const LOGOUT_URI = "${LOGOUT_URI}";
 
+    // --- Handle OAuth2 code exchange ---
+    const urlParams = new URLSearchParams(window.location.search);
+    const code = urlParams.get("code");
+
+    if (code && !localStorage.getItem("id_token")) {
+      const body = new URLSearchParams({
+        grant_type: "authorization_code",
+        client_id: CLIENT_ID,
+        code: code,
+        redirect_uri: REDIRECT_URI,
+      });
+
+      fetch(COGNITO_DOMAIN + "/oauth2/token", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/x-www-form-urlencoded"
+        },
+        body: body
+      })
+      .then(res => {
+        if (!res.ok) throw new Error("Token exchange failed");
+        return res.json();
+      })
+      .then(tokens => {
+        localStorage.setItem("id_token", tokens.id_token);
+        localStorage.setItem("access_token", tokens.access_token);
+        window.history.replaceState({}, document.title, window.location.pathname);
+        window.location.reload();
+      })
+      .catch(err => {
+        console.error("Token exchange error:", err);
+        alert("Authentication failed.");
+      });
+    }
+
+    // --- Token Check ---
     const token = localStorage.getItem("id_token");
     if (!token) {
       const loginUrl = COGNITO_DOMAIN + "/login?response_type=code&client_id=" + CLIENT_ID +
