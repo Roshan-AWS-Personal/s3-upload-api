@@ -34,9 +34,9 @@
   </table>
 
   <script>
-    const API_URL = "$${API_URL}";
-    const COGNITO_DOMAIN = "$${COGNITO_DOMAIN}";
-    const CLIENT_ID = "$${CLIENT_ID}";
+    const API_URL = "${API_URL}";
+    const COGNITO_DOMAIN = "${COGNITO_DOMAIN}";
+    const CLIENT_ID = "${CLIENT_ID}";
 
     const token = localStorage.getItem("access_token");
 
