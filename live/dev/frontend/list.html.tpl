@@ -41,14 +41,14 @@
     const token = localStorage.getItem("access_token");
 
     if (!token) {
-      const redirectUri = window.location.href;
+      const redirectUri = window.location.origin + window.location.pathname;
       const loginUrl = COGNITO_DOMAIN + "/login?response_type=code&client_id=" + CLIENT_ID + "&redirect_uri=" + encodeURIComponent(redirectUri) + "&scope=openid+email+profile";
       window.location.href = loginUrl;
     } else {
       fetch(API_URL, {
         method: "GET",
         headers: {
-          "Authorization": token
+          "Authorization": "Bearer " + token
         }
       })
       .then(res => {
