@@ -44,7 +44,7 @@
     const CLIENT_ID = "${CLIENT_ID}";
     const REDIRECT_URI = "https://d3oxbj8znjk30z.cloudfront.net/list.html";
 
-    const token = localStorage.getItem("access_token");
+    const token = localStorage.getItem("id_token");
 
     if (!token) {
       const loginUrl = `${COGNITO_DOMAIN}/login?response_type=code&client_id=${CLIENT_ID}&redirect_uri=${encodeURIComponent(REDIRECT_URI)}&scope=openid+email+profile`;
