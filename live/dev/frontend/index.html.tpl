@@ -35,7 +35,7 @@
 <body>
   <!-- Shared nav -->
   <script src="shared-header.js"></script>
-  <script>injectHeader("index");</script>
+  <script>injectHeader("list");</script>
 
   <!-- Page content -->
   <div class="container">
