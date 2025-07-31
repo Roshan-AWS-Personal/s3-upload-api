@@ -79,21 +79,5 @@ data "template_file" "list_html" {
   }
 }
 
-data "template_file" "shared_header_js" {
-  template = file("${path.module}/frontend/shared-header.js.tpl")
-  vars = {
-    COGNITO_DOMAIN = var.cognito_domain
-    CLIENT_ID      = var.cognito_client_id
-    REDIRECT_URI   = var.login_redirect_url
-  }
-}
-
-resource "aws_s3_object" "shared_header_js" {
-  bucket       = aws_s3_bucket.frontend_site.id
-  key          = "shared-header.js"
-  content      = data.template_file.shared_header_js.rendered
-  content_type = "application/javascript"
-}
-
 
 

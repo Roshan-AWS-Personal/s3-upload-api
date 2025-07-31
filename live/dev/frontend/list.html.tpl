@@ -10,12 +10,18 @@
     th, td { padding: 0.5em; border: 1px solid #ccc; }
     th { background: #f0f0f0; }
     .error { color: red; margin-top: 1em; }
+    nav a { margin-right: 1em; text-decoration: none; }
+    nav a.active { font-weight: bold; }
   </style>
 </head>
 <body>
-  <!-- Shared nav bar -->
-  <script src="shared-header.js"></script>
-  <script>injectHeader("list");</script>
+  <!-- Header / Nav -->
+  <nav>
+    <a href="index.html">Upload</a>
+    <a href="list.html" class="active">Downloads</a>
+    <button id="logoutBtn" style="margin-left: 2em;">Logout</button>
+    <hr />
+  </nav>
 
   <h1>Uploaded Files</h1>
   <div id="loading">Loading...</div>
@@ -34,52 +40,56 @@
   </table>
 
   <script>
-    const API_URL = "__API_URL__";
-    const COGNITO_DOMAIN = "__COGNITO_DOMAIN__";
-    const CLIENT_ID = "__CLIENT_ID__";
+    const API_URL = "${API_URL}";
+    const COGNITO_DOMAIN = "${COGNITO_DOMAIN}";
+    const CLIENT_ID = "${CLIENT_ID}";
+    const REDIRECT_URI = "${REDIRECT_URI}";
 
     const token = localStorage.getItem("access_token");
 
     if (!token) {
-      const redirectUrl = encodeURIComponent(window.location.href);
-      const loginUrl = `${COGNITO_DOMAIN}/login?response_type=code&client_id=${CLIENT_ID}&redirect_uri=${redirectUrl}&scope=openid+email+profile`;
+      const loginUrl = `${COGNITO_DOMAIN}/login?response_type=code&client_id=${CLIENT_ID}&redirect_uri=` + encodeURIComponent(window.location.href) + `&scope=openid+email+profile`;
       window.location.href = loginUrl;
-    } else {
-      fetch(API_URL, {
-        method: "GET",
-        headers: {
-          "Authorization": token
-        }
-      })
-      .then(res => {
-        if (!res.ok) throw new Error("Auth failed or bad response");
-        return res.json();
-      })
-      .then(data => {
-        document.getElementById("loading").style.display = "none";
-        const table = document.getElementById("uploadsTable");
-        const tbody = document.getElementById("uploadsBody");
-        table.style.display = "table";
-
-        data.forEach(item => {
-          const row = document.createElement("tr");
-          row.innerHTML =
-            "<td>" + item.filename + "</td>" +
-            "<td>" + (item.uploader || "-") + "</td>" +
-            "<td>" + (item.size / 1024).toFixed(1) + "</td>" +
-            "<td>" + new Date(item.timestamp).toLocaleString() + "</td>" +
-            "<td><a href='" + item.s3_url + "' target='_blank'>View</a></td>";
-          tbody.appendChild(row);
-        });
-      })
-      .catch(err => {
-        document.getElementById("loading").style.display = "none";
-        const errorDiv = document.getElementById("error");
-        errorDiv.style.display = "block";
-        errorDiv.textContent = "Failed to load uploads: " + err.message;
-        console.error(err);
-      });
     }
+
+    document.getElementById("logoutBtn").onclick = function () {
+      localStorage.removeItem("id_token");
+      localStorage.removeItem("access_token");
+      window.location.href = `${COGNITO_DOMAIN}/logout?client_id=${CLIENT_ID}&logout_uri=${encodeURIComponent(REDIRECT_URI)}`;
+    };
+
+    fetch(API_URL, {
+      method: "GET",
+      headers: { "Authorization": token }
+    })
+    .then(res => {
+      if (!res.ok) throw new Error("Auth failed or bad response");
+      return res.json();
+    })
+    .then(data => {
+      document.getElementById("loading").style.display = "none";
+      const table = document.getElementById("uploadsTable");
+      const tbody = document.getElementById("uploadsBody");
+      table.style.display = "table";
+
+      data.forEach(item => {
+        const row = document.createElement("tr");
+        row.innerHTML =
+          "<td>" + item.filename + "</td>" +
+          "<td>" + (item.uploader || "-") + "</td>" +
+          "<td>" + (item.size / 1024).toFixed(1) + "</td>" +
+          "<td>" + new Date(item.timestamp).toLocaleString() + "</td>" +
+          "<td><a href=\"" + item.s3_url + "\" target=\"_blank\">View</a></td>";
+        tbody.appendChild(row);
+      });
+    })
+    .catch(err => {
+      document.getElementById("loading").style.display = "none";
+      const errorDiv = document.getElementById("error");
+      errorDiv.style.display = "block";
+      errorDiv.textContent = "Failed to load uploads: " + err.message;
+      console.error(err);
+    });
   </script>
 </body>
 </html>
