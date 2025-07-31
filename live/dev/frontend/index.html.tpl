@@ -37,14 +37,6 @@
   <script src="shared-header.js"></script>
   <script>injectHeader("index");</script>
 
-  <!-- Handle redirect forwarding from Cognito -->
-  <script>
-    const state = new URLSearchParams(window.location.search).get("state");
-    if (state && state !== "index.html") {
-      window.location.href = state;
-    }
-  </script>
-
   <!-- Page content -->
   <div class="container">
     <h2>Upload Files</h2>
@@ -92,7 +84,7 @@
       }
 
       for (const file of files) {
-        const status = createStatusBlock(`${file.name}: Uploading...`);
+        const status = createStatusBlock(`$${file.name}: Uploading...`);
         try {
           const query = new URLSearchParams({
             filename: file.name,
@@ -100,7 +92,7 @@
             filesize: file.size.toString()
           });
 
-          const presignRes = await fetch(`${API_URL}?${query.toString()}`, {
+          const presignRes = await fetch(`$${API_URL}?$${query.toString()}`, {
             method: "GET",
             headers: {
               Authorization: "Bearer " + token
@@ -109,7 +101,7 @@
 
           if (!presignRes.ok) {
             const errMsg = await presignRes.text();
-            status.innerHTML = `❌ ${file.name}: Failed to get upload URL<br><small>${errMsg}</small>`;
+            status.innerHTML = `❌ $${file.name}: Failed to get upload URL<br><small>$${errMsg}</small>`;
             status.classList.add("error");
             continue;
           }
@@ -122,14 +114,14 @@
 
           if (uploadRes.ok) {
             const fileUrl = upload_url.split("?")[0];
-            status.innerHTML = `✅ <strong>${file.name}</strong>: <a href="${fileUrl}" target="_blank">${fileUrl}</a>`;
+            status.innerHTML = `✅ <strong>$${file.name}</strong>: <a href="$${fileUrl}" target="_blank">$${fileUrl}</a>`;
             status.classList.add("success");
           } else {
-            status.innerHTML = `❌ ${file.name}: Upload failed (status ${uploadRes.status})`;
+            status.innerHTML = `❌ $${file.name}: Upload failed (status $${uploadRes.status})`;
             status.classList.add("error");
           }
         } catch (err) {
-          status.innerHTML = `❌ ${file.name}: Error: ${err.message}`;
+          status.innerHTML = `❌ $${file.name}: Error: $${err.message}`;
           status.classList.add("error");
         }
       }
@@ -145,7 +137,7 @@
 
     function showStatus(message, type = "") {
       const div = document.createElement("div");
-      div.className = `status ${type}`;
+      div.className = `status $${type}`;
       div.innerHTML = message;
       statusContainer.appendChild(div);
     }
