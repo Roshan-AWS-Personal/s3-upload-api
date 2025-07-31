@@ -13,9 +13,6 @@
   </style>
 </head>
 <body>
-  <!-- Shared nav bar -->
-  <script src="shared-header.js"></script>
-  <script>injectHeader("list");</script>
 
   <h1>Uploaded Files</h1>
   <div id="loading">Loading...</div>
