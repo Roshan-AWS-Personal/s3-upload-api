@@ -35,11 +35,11 @@
   </div>
 
   <script>
-    const API_URL = "$${API_URL}";
-    const COGNITO_DOMAIN = "$${COGNITO_DOMAIN}";
-    const CLIENT_ID = "$${CLIENT_ID}";
-    const REDIRECT_URI = "$${REDIRECT_URI}";
-    const LOGOUT_URI = "$${LOGOUT_URI}";
+    const API_URL = "${API_URL}";
+    const COGNITO_DOMAIN = "${COGNITO_DOMAIN}";
+    const CLIENT_ID = "${CLIENT_ID}";
+    const REDIRECT_URI = "${REDIRECT_URI}";
+    const LOGOUT_URI = "${LOGOUT_URI}";
 
     const token = localStorage.getItem("id_token");
     if (!token) {
@@ -82,7 +82,7 @@
             filesize: file.size.toString()
           });
 
-          const presignRes = await fetch(`$${API_URL}?$${query.toString()}`, {
+          const presignRes = await fetch(`${API_URL}?$${query.toString()}`, {
             method: "GET",
             headers: { Authorization: "Bearer " + token }
           });
