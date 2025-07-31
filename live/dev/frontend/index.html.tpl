@@ -73,7 +73,7 @@
       }
 
       for (const file of files) {
-        const status = createStatusBlock(String.raw`${file.name}: Uploading...`);
+        const status = createStatusBlock(`$${file.name}: Uploading...`);
         try {
           const query = new URLSearchParams({
             filename: file.name,
@@ -81,14 +81,14 @@
             filesize: file.size.toString()
           });
 
-          const presignRes = await fetch(`${API_URL}?$${query.toString()}`, {
+          const presignRes = await fetch(`$${API_URL}?$${query.toString()}`, {
             method: "GET",
             headers: { Authorization: "Bearer " + token }
           });
 
           if (!presignRes.ok) {
             const errMsg = await presignRes.text();
-            status.innerHTML = String.raw`❌ ${file.name}: Failed to get upload URL<br><small>${errMsg}</small>`;
+            status.innerHTML = `❌ $${file.name}: Failed to get upload URL<br><small>$${errMsg}</small>`;
             status.classList.add("error");
             continue;
           }
@@ -101,14 +101,14 @@
 
           if (uploadRes.ok) {
             const fileUrl = upload_url.split("?")[0];
-            status.innerHTML = String.raw`✅ <strong>${file.name}</strong>: <a href="${fileUrl}" target="_blank">${fileUrl}</a>`;
+            status.innerHTML = `✅ <strong>$${file.name}</strong>: <a href="$${fileUrl}" target="_blank">$${fileUrl}</a>`;
             status.classList.add("success");
           } else {
-            status.innerHTML = String.raw`❌ ${file.name}: Upload failed (status ${uploadRes.status})`;
+            status.innerHTML = `❌ $${file.name}: Upload failed (status $${uploadRes.status})`;
             status.classList.add("error");
           }
         } catch (err) {
-          status.innerHTML = String.raw`❌ ${file.name}: Error: ${err.message}`;
+          status.innerHTML = `❌ $${file.name}: Error: $${err.message}`;
           status.classList.add("error");
         }
       }
