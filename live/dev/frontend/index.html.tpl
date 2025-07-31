@@ -68,7 +68,7 @@
       }
 
       for (const file of files) {
-        const status = createStatusBlock(`$${file.name}: Uploading...`);
+        const status = createStatusBlock(String.raw`$${file.name}: Uploading...`);
         try {
           const query = new URLSearchParams({
             filename: file.name,
@@ -83,7 +83,7 @@
 
           if (!presignRes.ok) {
             const errMsg = await presignRes.text();
-            status.innerHTML = `❌ $${file.name}: Failed to get upload URL<br><small>${errMsg}</small>`;
+            status.innerHTML = String.raw`❌ $${file.name}: Failed to get upload URL<br><small>${errMsg}</small>`;
             status.classList.add("error");
             continue;
           }
@@ -96,14 +96,14 @@
 
           if (uploadRes.ok) {
             const fileUrl = upload_url.split("?")[0];
-            status.innerHTML = `✅ <strong>$${file.name}</strong>: <a href="$${fileUrl}" target="_blank">$${fileUrl}</a>`;
+            status.innerHTML = String.raw`✅ <strong>$${file.name}</strong>: <a href="$${fileUrl}" target="_blank">$${fileUrl}</a>`;
             status.classList.add("success");
           } else {
-            status.innerHTML = `❌ $${file.name}: Upload failed (status ${uploadRes.status})`;
+            status.innerHTML = String.raw`❌ $${file.name}: Upload failed (status $${uploadRes.status})`;
             status.classList.add("error");
           }
         } catch (err) {
-          status.innerHTML = `❌ $${file.name}: Error: ${err.message}`;
+          status.innerHTML = String.raw`❌ $${file.name}: Error: $${err.message}`;
           status.classList.add("error");
         }
       }
