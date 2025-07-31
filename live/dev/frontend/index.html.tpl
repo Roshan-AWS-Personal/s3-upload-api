@@ -75,7 +75,7 @@
             filesize: file.size.toString()
           });
 
-          const presignRes = await fetch(String.raw`${API_URL}?${query.toString()}`, {
+          const presignRes = await fetch(String.raw`${API_URL}?$${query.toString()}`, {
             method: "GET",
             headers: { Authorization: "Bearer " + token }
           });
