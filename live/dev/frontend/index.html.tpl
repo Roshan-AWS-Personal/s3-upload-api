@@ -37,7 +37,7 @@
   <script>
     const API_URL = "${API_URL}";
     const COGNITO_DOMAIN = "${COGNITO_DOMAIN}";
-    const CLIENT_ID = "${CLIENT_ID}";
+    const CLIENT_ID = "61ft4rv9n3ksikh5arn5ij8k90";
     const REDIRECT_URI = "${REDIRECT_URI}";
     const LOGOUT_URI = "${LOGOUT_URI}";
 
