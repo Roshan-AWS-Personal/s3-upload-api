@@ -67,13 +67,18 @@
       .then(tokens => {
         localStorage.setItem("id_token", tokens.id_token);
         localStorage.setItem("access_token", tokens.access_token);
-        window.history.replaceState({}, document.title, window.location.pathname);
-        window.location.reload();
+
+        // Ensure reload starts from clean URL (without ?code=)
+        const cleanUrl = window.location.origin + window.location.pathname;
+        window.location.replace(cleanUrl); // <- no reload(), no history.replaceState + reload
       })
       .catch(err => {
         console.error("Token exchange error:", err);
         alert("Authentication failed.");
       });
+
+      // IMPORTANT: RETURN EARLY so rest of script doesn't run
+      return;
     }
 
     // --- Token Check ---
