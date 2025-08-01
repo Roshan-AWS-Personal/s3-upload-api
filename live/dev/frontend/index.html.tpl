@@ -44,7 +44,6 @@
     const urlParams = new URLSearchParams(window.location.search);
     const code = urlParams.get("code");
 
-    // If we have a code and no token, do exchange
     if (code && !localStorage.getItem("id_token")) {
       const body = new URLSearchParams({
         grant_type: "authorization_code",
@@ -67,7 +66,6 @@
       .then(tokens => {
         localStorage.setItem("id_token", tokens.id_token);
         localStorage.setItem("access_token", tokens.access_token);
-        // Clean URL and reload page
         window.location.replace(window.location.origin + window.location.pathname);
       })
       .catch(err => {
@@ -75,14 +73,13 @@
         alert("Authentication failed.");
       });
 
-      // Don't continue running rest of script
       return;
     }
 
     const token = localStorage.getItem("access_token") || localStorage.getItem("id_token");
 
     if (!token) {
-      const loginUrl = `${COGNITO_DOMAIN}/login?response_type=code&client_id=${CLIENT_ID}&redirect_uri=$${encodeURIComponent(REDIRECT_URI)}&scope=openid+email+profile`;
+      const loginUrl = `${COGNITO_DOMAIN}/login?response_type=code&client_id=${CLIENT_ID}&redirect_uri=${encodeURIComponent(REDIRECT_URI)}&scope=openid+email+profile`;
       window.location.href = loginUrl;
       return;
     }
@@ -112,7 +109,7 @@
       }
 
       for (const file of files) {
-        const status = createStatusBlock(`${file.name}: Uploading...`);
+        const status = createStatusBlock(`$${file.name}: Uploading...`);
         try {
           const query = new URLSearchParams({
             filename: file.name,
@@ -127,7 +124,7 @@
 
           if (!presignRes.ok) {
             const errMsg = await presignRes.text();
-            status.innerHTML = `❌ ${file.name}: Failed to get upload URL<br><small>${errMsg}</small>`;
+            status.innerHTML = `❌ $${file.name}: Failed to get upload URL<br><small>$${errMsg}</small>`;
             status.classList.add("error");
             continue;
           }
@@ -140,14 +137,14 @@
 
           if (uploadRes.ok) {
             const fileUrl = upload_url.split("?")[0];
-            status.innerHTML = `✅ <strong>${file.name}</strong>: <a href="${fileUrl}" target="_blank">${fileUrl}</a>`;
+            status.innerHTML = `✅ <strong>$${file.name}</strong>: <a href="$${fileUrl}" target="_blank">$${fileUrl}</a>`;
             status.classList.add("success");
           } else {
-            status.innerHTML = `❌ ${file.name}: Upload failed (status ${uploadRes.status})`;
+            status.innerHTML = `❌ $${file.name}: Upload failed (status $${uploadRes.status})`;
             status.classList.add("error");
           }
         } catch (err) {
-          status.innerHTML = `❌ ${file.name}: Error: ${err.message}`;
+          status.innerHTML = `❌ $${file.name}: Error: $${err.message}`;
           status.classList.add("error");
         }
       }
