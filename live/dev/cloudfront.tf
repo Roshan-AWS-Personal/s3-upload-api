@@ -7,7 +7,11 @@ resource "aws_cloudfront_origin_access_control" "s3_oac" {
 }
 
 resource "aws_cloudfront_origin_request_policy" "forward_auth" {
-  name = "forward-auth-header"
+  name = "forward-auth-and-origin"
+
+  cookies_config {
+    cookie_behavior = "none"
+  }
 
   headers_config {
     header_behavior = "whitelist"
@@ -16,12 +20,8 @@ resource "aws_cloudfront_origin_request_policy" "forward_auth" {
     }
   }
 
-  cookies_config {
-    cookie_behavior = "none"
-  }
-
   query_strings_config {
-    query_string_behavior = "all"
+    query_string_behavior = "none"
   }
 }
 
@@ -39,21 +39,14 @@ resource "aws_cloudfront_distribution" "frontend" {
   origin {
     domain_name = "${aws_api_gateway_rest_api.upload_api.id}.execute-api.${var.aws_region}.amazonaws.com"
     origin_id   = "api-upload"
-
-    custom_origin_config {
-      origin_protocol_policy = "https-only"
-      http_port              = 80
-      https_port             = 443
-      origin_ssl_protocols   = ["TLSv1.2"]
-    }
+    origin_path = "/${var.stage_name}"  # e.g. /dev
   }
 
   default_cache_behavior {
-    allowed_methods  = ["GET", "HEAD"]
-    cached_methods   = ["GET", "HEAD"]
-    target_origin_id = "s3-upload-site"
-
+    target_origin_id       = "s3-upload-site"
     viewer_protocol_policy = "redirect-to-https"
+    allowed_methods        = ["GET", "HEAD"]
+    cached_methods         = ["GET", "HEAD"]
 
     forwarded_values {
       query_string = false
@@ -64,27 +57,27 @@ resource "aws_cloudfront_distribution" "frontend" {
   }
 
   ordered_cache_behavior {
-    path_pattern     = "upload*"
-    allowed_methods  = ["GET", "OPTIONS", "HEAD"]
-    cached_methods   = ["GET", "HEAD"]
-    target_origin_id = "api-upload"
+    path_pattern           = "/upload*"
+    target_origin_id       = "api-upload"
+    viewer_protocol_policy = "redirect-to-https"
+    allowed_methods        = ["GET", "OPTIONS", "HEAD"]
+    cached_methods         = ["GET", "HEAD"]
+    compress               = true
 
-    viewer_protocol_policy     = "redirect-to-https"
     cache_policy_id            = "Managed-CachingDisabled"
     origin_request_policy_id   = aws_cloudfront_origin_request_policy.forward_auth.id
-    compress                   = true
   }
 
   ordered_cache_behavior {
-    path_pattern     = "files*"
-    allowed_methods  = ["GET", "OPTIONS", "HEAD"]
-    cached_methods   = ["GET", "HEAD"]
-    target_origin_id = "api-upload"
+    path_pattern           = "/files*"
+    target_origin_id       = "api-upload"
+    viewer_protocol_policy = "redirect-to-https"
+    allowed_methods        = ["GET", "OPTIONS", "HEAD"]
+    cached_methods         = ["GET", "HEAD"]
+    compress               = true
 
-    viewer_protocol_policy     = "redirect-to-https"
     cache_policy_id            = "Managed-CachingDisabled"
     origin_request_policy_id   = aws_cloudfront_origin_request_policy.forward_auth.id
-    compress                   = true
   }
 
   restrictions {
