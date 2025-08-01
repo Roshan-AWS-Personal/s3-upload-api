@@ -1,29 +1,13 @@
 resource "aws_cloudfront_origin_access_control" "s3_oac" {
   name                              = "upload-site-oac"
-  description                       = "OAC for S3 static frontend"
   origin_access_control_origin_type = "s3"
   signing_behavior                  = "always"
   signing_protocol                  = "sigv4"
+  description                       = "OAC for S3 frontend site"
 }
 
-# You already have these — shown for completeness:
-resource "aws_cloudfront_origin_request_policy" "forward_auth" {
-  name = "forward-auth-and-origin"
-
-  cookies_config {
-    cookie_behavior = "none"
-  }
-
-  headers_config {
-    header_behavior = "whitelist"
-    headers {
-      items = ["Authorization", "Origin"]
-    }
-  }
-
-  query_strings_config {
-    query_string_behavior = "none"
-  }
+data "aws_cloudfront_cache_policy" "optimized" {
+  name = "Managed-CachingOptimized"
 }
 
 resource "aws_cloudfront_origin_request_policy" "s3_safe" {
@@ -42,59 +26,26 @@ resource "aws_cloudfront_origin_request_policy" "s3_safe" {
   }
 }
 
-data "aws_cloudfront_cache_policy" "optimized" {
-  name = "Managed-CachingOptimized"
-}
-
-data "aws_cloudfront_cache_policy" "disabled" {
-  name = "Managed-CachingDisabled"
-}
-
-resource "aws_cloudfront_distribution" "cdn" {
+resource "aws_cloudfront_distribution" "frontend" {
   enabled             = true
   default_root_object = "index.html"
 
   origin {
     domain_name = aws_s3_bucket.frontend_site.bucket_regional_domain_name
-    origin_id   = "s3-origin"
+    origin_id   = "s3-upload-site"
+
     origin_access_control_id = aws_cloudfront_origin_access_control.s3_oac.id
   }
 
-  origin {
-    domain_name = "${aws_apigatewayv2_api.api.api_id}.execute-api.${var.aws_region}.amazonaws.com"
-    origin_id   = "api-origin"
-
-    custom_origin_config {
-      http_port              = 80
-      https_port             = 443
-      origin_protocol_policy = "https-only"
-      origin_ssl_protocols   = ["TLSv1.2"]
-    }
-  }
-
   default_cache_behavior {
-    target_origin_id       = "s3-origin"
+    allowed_methods  = ["GET", "HEAD"]
+    cached_methods   = ["GET", "HEAD"]
+    target_origin_id = "s3-upload-site"
     viewer_protocol_policy = "redirect-to-https"
-
-    allowed_methods        = ["GET", "HEAD"]
-    cached_methods         = ["GET", "HEAD"]
-    compress               = true
+    compress         = true
 
     cache_policy_id           = data.aws_cloudfront_cache_policy.optimized.id
     origin_request_policy_id  = aws_cloudfront_origin_request_policy.s3_safe.id
-  }
-
-  ordered_cache_behavior {
-    path_pattern             = "/api/*"
-    target_origin_id         = "api-origin"
-    viewer_protocol_policy   = "redirect-to-https"
-
-    allowed_methods          = ["GET", "HEAD", "OPTIONS", "PUT", "POST", "DELETE", "PATCH"]
-    cached_methods           = ["GET", "HEAD"]
-    compress                 = true
-
-    cache_policy_id           = data.aws_cloudfront_cache_policy.disabled.id
-    origin_request_policy_id  = aws_cloudfront_origin_request_policy.forward_auth.id
   }
 
   restrictions {
@@ -108,6 +59,10 @@ resource "aws_cloudfront_distribution" "cdn" {
   }
 
   tags = {
-    Project = "s3-image-upload"
+    Environment = var.env
   }
+}
+
+output "cloudfront_url" {
+  value = "https://${aws_cloudfront_distribution.frontend.domain_name}"
 }
