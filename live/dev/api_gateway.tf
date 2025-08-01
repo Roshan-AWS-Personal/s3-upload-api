@@ -151,15 +151,7 @@ resource "aws_api_gateway_deployment" "api_deployment" {
     redeploy = sha1(jsonencode([
       aws_api_gateway_resource.upload.id,
       aws_api_gateway_method.get_upload_url_method.id,
-      aws_api_gateway_integration.lambda_integration.id,
-      aws_api_gateway_resource.upload.id,
-      aws_api_gateway_method.get_upload_url_method.id,
-      aws_api_gateway_integration.lambda_integration.id,
-      aws_api_gateway_resource.files.id,
-      aws_api_gateway_method.get_files.id,
-      aws_api_gateway_integration.get_files_integration.id,
-      aws_api_gateway_method.files_options.id,
-      aws_api_gateway_integration.files_options_mock.id
+      aws_api_gateway_integration.lambda_integration.id
     ]))
   }
 
@@ -181,92 +173,4 @@ output "upload_api_url" {
   value = "https://${aws_api_gateway_rest_api.upload_api.id}.execute-api.${var.aws_region}.amazonaws.com/${aws_api_gateway_stage.stage.stage_name}/upload"
 }
 
-resource "aws_api_gateway_resource" "files" {
-  rest_api_id = aws_api_gateway_rest_api.upload_api.id
-  parent_id   = aws_api_gateway_rest_api.upload_api.root_resource_id
-  path_part   = "files"
-}
-
-resource "aws_api_gateway_method" "get_files" {
-  rest_api_id   = aws_api_gateway_rest_api.upload_api.id
-  resource_id   = aws_api_gateway_resource.files.id
-  http_method   = "GET"
-  authorization = "COGNITO_USER_POOLS"
-  authorizer_id = aws_api_gateway_authorizer.cognito.id
-}
-
-resource "aws_api_gateway_integration" "get_files_integration" {
-  rest_api_id             = aws_api_gateway_rest_api.upload_api.id
-  resource_id             = aws_api_gateway_resource.files.id
-  http_method             = aws_api_gateway_method.get_files.http_method
-  integration_http_method = "POST"
-  type                    = "AWS_PROXY"
-  uri                     = aws_lambda_function.list_uploads.invoke_arn
-}
-
-resource "aws_lambda_permission" "api_gateway_list_files" {
-  statement_id  = "AllowAPIGatewayInvokeListFiles"
-  action        = "lambda:InvokeFunction"
-  function_name = aws_lambda_function.list_uploads.function_name
-  principal     = "apigateway.amazonaws.com"
-  source_arn    = "${aws_api_gateway_rest_api.upload_api.execution_arn}/*/GET/files"
-}
-
-# OPTIONS method for /files (CORS)
-resource "aws_api_gateway_method" "files_options" {
-  rest_api_id   = aws_api_gateway_rest_api.upload_api.id
-  resource_id   = aws_api_gateway_resource.files.id
-  http_method   = "OPTIONS"
-  authorization = "NONE"
-}
-
-resource "aws_api_gateway_integration" "files_options_mock" {
-  rest_api_id = aws_api_gateway_rest_api.upload_api.id
-  resource_id = aws_api_gateway_resource.files.id
-  http_method = aws_api_gateway_method.files_options.http_method
-  type        = "MOCK"
-
-  request_templates = {
-    "application/json" = "{\"statusCode\": 200}"
-  }
-}
-
-resource "aws_api_gateway_method_response" "files_options_response" {
-  rest_api_id = aws_api_gateway_rest_api.upload_api.id
-  resource_id = aws_api_gateway_resource.files.id
-  http_method = aws_api_gateway_method.files_options.http_method
-  status_code = "200"
-
-  response_models = {
-    "application/json" = "Empty"
-  }
-
-  response_parameters = {
-    "method.response.header.Access-Control-Allow-Headers" = true
-    "method.response.header.Access-Control-Allow-Methods" = true
-    "method.response.header.Access-Control-Allow-Origin"  = true
-  }
-}
-
-resource "aws_api_gateway_integration_response" "files_options_response" {
-  rest_api_id = aws_api_gateway_rest_api.upload_api.id
-  resource_id = aws_api_gateway_resource.files.id
-  http_method = aws_api_gateway_method.files_options.http_method
-  status_code = "200"
-
-  response_parameters = {
-    "method.response.header.Access-Control-Allow-Headers" = "'Content-Type,Authorization'"
-    "method.response.header.Access-Control-Allow-Methods" = "'OPTIONS,GET'"
-    "method.response.header.Access-Control-Allow-Origin"  = "'*'"
-  }
-
-  response_templates = {
-    "application/json" = ""
-  }
-
-  depends_on = [
-    aws_api_gateway_integration.files_options_mock,
-    aws_api_gateway_method_response.files_options_response
-  ]
-}
 
