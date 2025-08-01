@@ -120,7 +120,7 @@
 
           const presignRes = await fetch(`${API_URL}?$${query.toString()}`, {
             method: "GET",
-            headers: { Authorization: "Bearer " + token }
+            headers: { Authorization: token }
           });
 
           if (!presignRes.ok) {
