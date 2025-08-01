@@ -35,7 +35,7 @@
   </div>
 
   <script>
-    const API_URL = "https://n3bcr23wm1.execute-api.ap-southeast-2.amazonaws.com/dev/upload";
+    const API_URL = "${API_URL}";
     const COGNITO_DOMAIN = "${COGNITO_DOMAIN}";
     const CLIENT_ID = "${CLIENT_ID}";
     const REDIRECT_URI = "${REDIRECT_URI}";
@@ -77,7 +77,7 @@
     }
 
     // --- Token Check ---
-    const token = localStorage.getItem("id_token");
+    const token = localStorage.getItem("access_token") || localStorage.getItem("id_token");
     if (!token) {
       const loginUrl = COGNITO_DOMAIN + "/login?response_type=code&client_id=" + CLIENT_ID +
         "&redirect_uri=" + encodeURIComponent(REDIRECT_URI) +
