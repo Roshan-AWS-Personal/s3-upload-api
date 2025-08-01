@@ -55,11 +55,8 @@ resource "aws_cloudfront_distribution" "cdn" {
   default_root_object = "index.html"
 
   origin {
-    domain_name = aws_s3_bucket.static_website.bucket_regional_domain_name
+    domain_name = aws_s3_bucket.frontend_site.bucket_regional_domain_name
     origin_id   = "s3-origin"
-
-    s3_origin_config {}
-
     origin_access_control_id = aws_cloudfront_origin_access_control.s3_oac.id
   }
 
