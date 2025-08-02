@@ -34,7 +34,7 @@
 
   <script>
   (async function(){
-    const API_URL        = "https://d3oxbj82njk30z.cloudfront.net/dev/upload";
+    const API_URL        = "${API_URL}";
     const COGNITO_DOMAIN = "${COGNITO_DOMAIN}";
     const CLIENT_ID      = "${CLIENT_ID}";
     const REDIRECT_URI   = "${REDIRECT_URI}";
