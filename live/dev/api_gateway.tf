@@ -46,7 +46,6 @@ resource "aws_iam_role" "apigw_logs_role" {
 EOF
 }
 
-# 3) Attach a policy granting the necessary CloudWatch Logs permissions
 resource "aws_iam_role_policy" "apigw_logs_policy" {
   name = "APIGatewayLogsPolicy"
   role = aws_iam_role.apigw_logs_role.id
@@ -62,7 +61,10 @@ resource "aws_iam_role_policy" "apigw_logs_policy" {
         "logs:CreateLogStream",
         "logs:PutLogEvents"
       ],
-      "Resource":"arn:aws:logs:${var.aws_region}:${data.aws_caller_identity.current.account_id}:log-group:/aws/api-gateway/${aws_api_gateway_rest_api.upload_api.name}/${var.stage_name}:*"
+      "Resource":[
+        "arn:aws:logs:${var.aws_region}:${data.aws_caller_identity.current.account_id}:log-group:/aws/api-gateway/${aws_api_gateway_rest_api.upload_api.name}/${var.stage_name}",
+        "arn:aws:logs:${var.aws_region}:${data.aws_caller_identity.current.account_id}:log-group:/aws/api-gateway/${aws_api_gateway_rest_api.upload_api.name}/${var.stage_name}:*"
+      ]
     }
   ]
 }
