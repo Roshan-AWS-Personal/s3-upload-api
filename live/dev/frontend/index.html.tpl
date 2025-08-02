@@ -132,7 +132,7 @@
           status.innerHTML = `✅ <strong>$${f.name}</strong>: <a href="$${clean}" target="_blank">$${clean}</a>`;
           status.classList.add("success");
         } catch (err) {
-          status.innerHTML = `❌ $${f.name}: ${err.message}`;
+          status.innerHTML = `❌ $${f.name}: $${err.message}`;
           status.classList.add("error");
         }
       }
