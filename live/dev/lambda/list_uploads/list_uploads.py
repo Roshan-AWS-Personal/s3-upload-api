@@ -1,14 +1,27 @@
 import boto3
-import os
 import json
 import logging
+from decimal import Decimal
 from boto3.dynamodb.conditions import Key
 
+# --- setup DynamoDB & logging ---
 dynamodb = boto3.resource("dynamodb")
 table = dynamodb.Table("file_upload_metadata")
 
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
+
+
+# --- custom JSON encoder to handle Decimal ---
+class DecimalEncoder(json.JSONEncoder):
+    def default(self, obj):
+        if isinstance(obj, Decimal):
+            # if it's a whole number, cast to int; otherwise float
+            if obj % 1 == 0:
+                return int(obj)
+            return float(obj)
+        return super(DecimalEncoder, self).default(obj)
+
 
 def response(status_code, body):
     return {
@@ -19,25 +32,30 @@ def response(status_code, body):
             "Access-Control-Allow-Methods": "OPTIONS,GET",
             "Content-Type": "application/json"
         },
-        "body": json.dumps(body)
+        # use our DecimalEncoder here
+        "body": json.dumps(body, cls=DecimalEncoder)
     }
+
 
 def lambda_handler(event, context):
     try:
-        if event["httpMethod"] == "OPTIONS":
+        # handle CORS preflight
+        if event.get("httpMethod") == "OPTIONS":
             return response(200, {"message": "CORS preflight OK"})
 
-        claims = event.get("requestContext", {}).get("authorizer", {}).get("claims", {})
-        username = claims.get("cognito:username", None)
+        # pull the Cognito username from the authorizer
+        claims = event.get("requestContext", {}) \
+                      .get("authorizer", {}) \
+                      .get("claims", {})
+        username = claims.get("cognito:username")
         if not username:
             return response(401, {"error": "Unauthorized - username missing"})
 
         logger.info(f"Fetching uploads for user: {username}")
 
-        # Query DynamoDB using GSI or primary key depending on your schema
-        # Assuming 'username' is a GSI partition key
+        # query your GSI
         result = table.query(
-            IndexName="username-index",  # optional: if username is a GSI
+            IndexName="username-index",
             KeyConditionExpression=Key("username").eq(username)
         )
 
@@ -46,4 +64,7 @@ def lambda_handler(event, context):
 
     except Exception as e:
         logger.exception("Error retrieving uploads")
-        return response(500, {"error": "Internal server error", "details": str(e)})
+        return response(
+            500,
+            {"error": "Internal server error", "details": str(e)}
+        )
