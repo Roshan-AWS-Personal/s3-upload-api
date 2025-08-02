@@ -21,14 +21,13 @@ resource "aws_api_gateway_authorizer" "cognito" {
   provider_arns   = [aws_cognito_user_pool.main.arn]
 }
 
-
-# 1) Create the CloudWatch Log Group for API Gateway access logs
+# 1) Your CloudWatch Log Group
 resource "aws_cloudwatch_log_group" "apigw_logs" {
   name              = "/aws/apigateway/${aws_api_gateway_rest_api.upload_api.id}/${var.stage_name}"
   retention_in_days = 14
 }
 
-# 2) Create an IAM Role that API Gateway can assume
+# 2) The role API Gateway will assume
 resource "aws_iam_role" "apigw_logs_role" {
   name = "APIGatewayCloudWatchLogsRole"
 
@@ -46,37 +45,19 @@ resource "aws_iam_role" "apigw_logs_role" {
 EOF
 }
 
-resource "aws_iam_role_policy" "apigw_logs_policy" {
-  name = "APIGatewayLogsPolicy"
-  role = aws_iam_role.apigw_logs_role.id
-
-  policy = <<EOF
-{
-  "Version":"2012-10-17",
-  "Statement":[
-    {
-      "Effect":"Allow",
-      "Action":[
-        "logs:CreateLogGroup",
-        "logs:CreateLogStream",
-        "logs:PutLogEvents"
-      ],
-      "Resource":[
-        "arn:aws:logs:${var.aws_region}:${data.aws_caller_identity.current.account_id}:log-group:/aws/apigateway/${aws_api_gateway_rest_api.upload_api.id}/${var.stage_name}",
-        "arn:aws:logs:${var.aws_region}:${data.aws_caller_identity.current.account_id}:log-group:/aws/apigateway/${aws_api_gateway_rest_api.upload_api.id}/${var.stage_name}:*"
-      ]
-    }
-  ]
-}
-EOF
+# 3) Attach AWS’s managed policy (no custom inline policy needed)
+resource "aws_iam_role_policy_attachment" "apigw_logs_managed" {
+  role       = aws_iam_role.apigw_logs_role.name
+  policy_arn = "arn:aws:iam::aws:policy/service-role/AmazonAPIGatewayPushToCloudWatchLogs"
 }
 
 data "aws_caller_identity" "current" {}
 
-# 4) Tell API Gateway to use that role for account‐level CloudWatch access
+# 4) Point API Gateway at that role
 resource "aws_api_gateway_account" "account" {
   cloudwatch_role_arn = aws_iam_role.apigw_logs_role.arn
 }
+
 
 
 # GET method (uses Cognito Auth)
