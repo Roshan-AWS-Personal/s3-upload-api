@@ -135,8 +135,6 @@ resource "aws_kms_alias" "lambda_key_alias" {
   target_key_id = aws_kms_key.lambda_key.id
 }
 
-data "aws_caller_identity" "current" {}
-
 resource "aws_lambda_function" "image_uploader" {
   function_name = "image-uploader-dev"
   kms_key_arn   = aws_kms_key.lambda_key.arn
