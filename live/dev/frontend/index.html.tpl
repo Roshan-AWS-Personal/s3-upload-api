@@ -120,7 +120,6 @@
             filesize:     file.size.toString(),
           });
 
-          // Note: $${…} here escapes for Terraform; final JS sees `${…}`
           const presignRes = await fetch(`${API_URL}?$${query.toString()}`, {
             method:  "GET",
             headers: { Authorization: "Bearer " + token }
