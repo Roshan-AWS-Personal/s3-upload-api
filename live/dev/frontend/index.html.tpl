@@ -70,7 +70,7 @@
         location.href = 
           `${COGNITO_DOMAIN}/login?response_type=code` +
           `&client_id=${CLIENT_ID}` +
-          `&redirect_uri=${encodeURIComponent(REDIRECT_URI)}` +
+          `&redirect_uri=$${encodeURIComponent(REDIRECT_URI)}` +
           `&scope=openid+email+profile`;
       }
       return;
@@ -124,7 +124,7 @@
           div.innerHTML = `✅ <strong>$${f.name}</strong>: <a href="$${clean}" target="_blank">$${clean}</a>`;
           div.classList.add("success");
         } catch (err) {
-          div.textContent = `❌ $${f.name}: ${err.message}`;
+          div.textContent = `❌ $${f.name}: $${err.message}`;
           div.classList.add("error");
         }
       }
