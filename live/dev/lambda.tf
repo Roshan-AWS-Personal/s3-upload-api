@@ -271,16 +271,22 @@ resource "aws_iam_role_policy" "lambda_dynamodb_read_policy" {
     Version = "2012-10-17"
     Statement = [
       {
-        Action = [
+        Effect   = "Allow"
+        Action   = [
           "dynamodb:Query",
           "dynamodb:Scan"
         ]
-        Effect   = "Allow"
-        Resource = aws_dynamodb_table.file_upload_metadata.arn
+        Resource = [
+          # your table
+          aws_dynamodb_table.file_upload_metadata.arn,
+          # your GSI on that table
+          "${aws_dynamodb_table.file_upload_metadata.arn}/index/username-index"
+        ]
       }
     ]
   })
 }
+
 
 resource "aws_iam_role" "list_uploads_exec_role" {
   name = "list-uploads-lambda-role"
