@@ -44,7 +44,7 @@
     const urlParams = new URLSearchParams(window.location.search);
     const code      = urlParams.get("code");
 
-    // 1) Always exchange the code if present
+    // 1) Always consume the OAuth2 code if present
     if (code) {
       const body = new URLSearchParams({
         grant_type:   "authorization_code",
@@ -63,8 +63,13 @@
         return res.json();
       })
       .then(tokens => {
+        // break any previous login‐loop guard
+        sessionStorage.removeItem("logging_in");
+
         localStorage.setItem("id_token",     tokens.id_token);
         localStorage.setItem("access_token", tokens.access_token);
+
+        // remove ?code and reload cleanly
         window.location.replace(window.location.origin + window.location.pathname);
       })
       .catch(err => {
@@ -72,22 +77,25 @@
         alert("Authentication failed.");
       });
 
-      return; // wait for tokens before doing anything else
+      return; // pause until exchange completes
     }
 
-    // 2) If no token, send user to Hosted UI
+    // 2) If no token, redirect into Hosted UI—but only once
     const token = localStorage.getItem("access_token") || localStorage.getItem("id_token");
     if (!token) {
-      const loginUrl =
-        `${COGNITO_DOMAIN}/login?response_type=code` +
-        `&client_id=${CLIENT_ID}` +
-        `&redirect_uri=${encodeURIComponent(REDIRECT_URI)}` +
-        `&scope=openid+email+profile`;
-      window.location.href = loginUrl;
+      if (!sessionStorage.getItem("logging_in")) {
+        sessionStorage.setItem("logging_in", "1");
+        const loginUrl =
+          `${COGNITO_DOMAIN}/login?response_type=code` +
+          `&client_id=${CLIENT_ID}` +
+          `&redirect_uri=${encodeURIComponent(REDIRECT_URI)}` +
+          `&scope=openid+email+profile`;
+        window.location.href = loginUrl;
+      }
       return;
     }
 
-    // 3) Upload form logic
+    // 3) At this point, we have a valid token—wire up your upload form
     const fileInput       = document.getElementById("fileInput");
     const preview         = document.getElementById("preview");
     const uploadForm      = document.getElementById("uploadForm");
@@ -108,7 +116,7 @@
       statusContainer.innerHTML = "";
 
       for (const file of fileInput.files) {
-        // *** double‐escaped for Terraform ***
+        // double‐escaped so Terraform leaves it intact
         const status = createStatusBlock(`$${file.name}: Uploading…`);
 
         try {
@@ -118,7 +126,7 @@
             filesize:     file.size.toString(),
           });
 
-          // *** double‐escaped here too ***
+          // get presigned URL
           const presignRes = await fetch(`${API_URL}?$${query.toString()}`, {
             method:  "GET",
             headers: { Authorization: `Bearer ${token}` }
@@ -129,17 +137,19 @@
           }
 
           const { upload_url } = await presignRes.json();
+
+          // PUT to S3 with correct Content-Type
           const uploadRes = await fetch(upload_url, {
-            method: "PUT",
-            body:   file
+            method:  "PUT",
+            headers: { "Content-Type": file.type },
+            body:    file
           });
           if (!uploadRes.ok) {
-            // *** and here ***
             throw new Error(`Upload failed ($${uploadRes.status})`);
           }
 
+          // strip off the query, show final URL
           const fileUrl = upload_url.split("?")[0];
-          // *** and finally here ***
           status.innerHTML = `✅ <strong>$${file.name}</strong>: <a href="$${fileUrl}" target="_blank">$${fileUrl}</a>`;
           status.classList.add("success");
         } catch (err) {
