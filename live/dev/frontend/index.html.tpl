@@ -35,37 +35,37 @@
   </div>
 
   <script>
-    const API_URL = "${API_URL}";
+    const API_URL       = "${API_URL}";
     const COGNITO_DOMAIN = "${COGNITO_DOMAIN}";
-    const CLIENT_ID = "${CLIENT_ID}";
-    const REDIRECT_URI = "${REDIRECT_URI}";
-    const LOGOUT_URI = "${LOGOUT_URI}";
+    const CLIENT_ID     = "${CLIENT_ID}";
+    const REDIRECT_URI  = "${REDIRECT_URI}";
+    const LOGOUT_URI    = "${LOGOUT_URI}";
 
     const urlParams = new URLSearchParams(window.location.search);
-    const code = urlParams.get("code");
+    const code      = urlParams.get("code");
 
-    if (code && !localStorage.getItem("id_token")) {
+    // Always exchange the code for fresh tokens
+    if (code) {
       const body = new URLSearchParams({
-        grant_type: "authorization_code",
-        client_id: CLIENT_ID,
-        code: code,
+        grant_type:   "authorization_code",
+        client_id:    CLIENT_ID,
+        code:         code,
         redirect_uri: REDIRECT_URI,
       });
 
       fetch(COGNITO_DOMAIN + "/oauth2/token", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/x-www-form-urlencoded"
-        },
-        body: body
+        method:  "POST",
+        headers: { "Content-Type": "application/x-www-form-urlencoded" },
+        body:    body
       })
       .then(res => {
         if (!res.ok) throw new Error("Token exchange failed");
         return res.json();
       })
       .then(tokens => {
-        localStorage.setItem("id_token", tokens.id_token);
-        localStorage.setItem("access_token", tokens.access_token);
+        localStorage.setItem("id_token",      tokens.id_token);
+        localStorage.setItem("access_token",  tokens.access_token);
+        // Remove ?code from URL and reload
         window.location.replace(window.location.origin + window.location.pathname);
       })
       .catch(err => {
@@ -76,17 +76,22 @@
       return;
     }
 
+    // Check for a valid token
     const token = localStorage.getItem("access_token") || localStorage.getItem("id_token");
-
     if (!token) {
-      const loginUrl = `${COGNITO_DOMAIN}/login?response_type=code&client_id=${CLIENT_ID}&redirect_uri=$${encodeURIComponent(REDIRECT_URI)}&scope=openid+email+profile`;
+      const loginUrl = 
+        `${COGNITO_DOMAIN}/login?response_type=code` +
+        `&client_id=${CLIENT_ID}` +
+        `&redirect_uri=$${encodeURIComponent(REDIRECT_URI)}` +
+        `&scope=openid+email+profile`;
       window.location.href = loginUrl;
       return;
     }
 
-    const fileInput = document.getElementById("fileInput");
-    const preview = document.getElementById("preview");
-    const uploadForm = document.getElementById("uploadForm");
+    // File preview elements
+    const fileInput       = document.getElementById("fileInput");
+    const preview         = document.getElementById("preview");
+    const uploadForm      = document.getElementById("uploadForm");
     const statusContainer = document.getElementById("statusContainer");
 
     fileInput.addEventListener("change", () => {
@@ -112,13 +117,13 @@
         const status = createStatusBlock(`$${file.name}: Uploading...`);
         try {
           const query = new URLSearchParams({
-            filename: file.name,
+            filename:     file.name,
             content_type: file.type,
-            filesize: file.size.toString()
+            filesize:     file.size.toString()
           });
 
           const presignRes = await fetch(`${API_URL}?$${query.toString()}`, {
-            method: "GET",
+            method:  "GET",
             headers: { Authorization: "Bearer " + token }
           });
 
@@ -132,7 +137,7 @@
           const { upload_url } = await presignRes.json();
           const uploadRes = await fetch(upload_url, {
             method: "PUT",
-            body: file
+            body:   file
           });
 
           if (uploadRes.ok) {
