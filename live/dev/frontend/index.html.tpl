@@ -137,14 +137,14 @@
           });
 
           if (!uploadRes.ok) {
-            throw new Error(`Upload failed (${uploadRes.status})`);
+            throw new Error(`Upload failed ($${uploadRes.status})`);
           }
 
           const fileUrl = upload_url.split("?")[0];
           status.innerHTML = `✅ <strong>$${file.name}</strong>: <a href="$${fileUrl}" target="_blank">$${fileUrl}</a>`;
           status.classList.add("success");
         } catch (err) {
-          status.innerHTML = `❌ ${file.name}: ${err.message}`;
+          status.innerHTML = `❌ $${file.name}: $${err.message}`;
           status.classList.add("error");
         }
       }
