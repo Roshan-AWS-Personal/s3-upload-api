@@ -116,7 +116,7 @@
 
           const pre = await fetch(`${API_URL}?$${q.toString()}`, {
             method:  "GET",
-            headers: { Authorization: `Bearer ${token}` }
+            headers: { Authorization: `Bearer $${token}` }
           });
           if (!pre.ok) throw new Error(await pre.text() || pre.statusText);
 
