@@ -22,17 +22,13 @@ resource "aws_api_gateway_authorizer" "cognito" {
 }
 
 
-############################################
-# 1) Create the CloudWatch Log Group
-############################################
+# 1) Create the CloudWatch Log Group for API Gateway access logs
 resource "aws_cloudwatch_log_group" "apigw_logs" {
   name              = "/aws/api-gateway/${aws_api_gateway_rest_api.upload_api.name}/${var.stage_name}"
   retention_in_days = 14
 }
 
-############################################
-# 2) Create the IAM Role for API Gateway
-############################################
+# 2) Create an IAM Role that API Gateway can assume
 resource "aws_iam_role" "apigw_logs_role" {
   name = "APIGatewayCloudWatchLogsRole"
 
@@ -50,8 +46,9 @@ resource "aws_iam_role" "apigw_logs_role" {
 EOF
 }
 
+# 3) Attach a policy granting the necessary CloudWatch Logs permissions
 resource "aws_iam_role_policy" "apigw_logs_policy" {
-  name = "APIGatewayCloudWatchLogsPolicy"
+  name = "APIGatewayLogsPolicy"
   role = aws_iam_role.apigw_logs_role.id
 
   policy = <<EOF
@@ -74,11 +71,8 @@ EOF
 
 data "aws_caller_identity" "current" {}
 
-############################################
-# 3) Tell API Gateway to use that Role
-############################################
+# 4) Tell API Gateway to use that role for account‐level CloudWatch access
 resource "aws_api_gateway_account" "account" {
-  # This must reference the IAM Role ARN
   cloudwatch_role_arn = aws_iam_role.apigw_logs_role.arn
 }
 
@@ -233,6 +227,7 @@ resource "aws_api_gateway_deployment" "api_deployment" {
 ############################################
 # 4) Configure your Stage’s Access Logging
 ############################################
+# 5) Finally, in your Stage, point access_log_settings at the LOG GROUP (not the role)
 resource "aws_api_gateway_stage" "stage" {
   stage_name    = var.stage_name
   rest_api_id   = aws_api_gateway_rest_api.upload_api.id
@@ -241,12 +236,13 @@ resource "aws_api_gateway_stage" "stage" {
   xray_tracing_enabled = true
 
   access_log_settings {
-    # This must reference the LOG GROUP ARN, not the role
     destination_arn = aws_cloudwatch_log_group.apigw_logs.arn
-    format = "$context.requestId $context.identity.sourceIp $context.httpMethod $context.resourcePath $context.status"
+    format          = "$context.requestId $context.identity.sourceIp $context.httpMethod $context.resourcePath $context.status"
   }
 
-  depends_on = [aws_api_gateway_account.account]
+  depends_on = [
+    aws_api_gateway_account.account
+  ]
 }
 
 # Output API URL
