@@ -118,7 +118,7 @@
             headers: { "Content-Type": f.type },
             body:    f
           });
-          if (!put.ok) throw new Error(`Upload failed (${put.status})`);
+          if (!put.ok) throw new Error(`Upload failed ($${put.status})`);
 
           const clean = upload_url.split("?")[0];
           div.innerHTML = `✅ <strong>$${f.name}</strong>: <a href="$${clean}" target="_blank">$${clean}</a>`;
