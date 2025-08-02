@@ -33,6 +33,44 @@ resource "aws_cloudwatch_log_group" "apigw_logs" {
 ############################################
 # 2) Create the IAM Role for API Gateway
 ############################################
+resource "aws_iam_role" "apigw_logs_role" {
+  name = "APIGatewayCloudWatchLogsRole"
+
+  assume_role_policy = <<EOF
+{
+  "Version":"2012-10-17",
+  "Statement":[
+    {
+      "Effect":"Allow",
+      "Principal":{"Service":"apigateway.amazonaws.com"},
+      "Action":"sts:AssumeRole"
+    }
+  ]
+}
+EOF
+}
+
+resource "aws_iam_role_policy" "apigw_logs_policy" {
+  name = "APIGatewayCloudWatchLogsPolicy"
+  role = aws_iam_role.apigw_logs_role.id
+
+  policy = <<EOF
+{
+  "Version":"2012-10-17",
+  "Statement":[
+    {
+      "Effect":"Allow",
+      "Action":[
+        "logs:CreateLogGroup",
+        "logs:CreateLogStream",
+        "logs:PutLogEvents"
+      ],
+      "Resource":"arn:aws:logs:${var.aws_region}:${data.aws_caller_identity.current.account_id}:log-group:/aws/api-gateway/${aws_api_gateway_rest_api.upload_api.name}/${var.stage_name}:*"
+    }
+  ]
+}
+EOF
+}
 
 data "aws_caller_identity" "current" {}
 
@@ -43,6 +81,7 @@ resource "aws_api_gateway_account" "account" {
   # This must reference the IAM Role ARN
   cloudwatch_role_arn = aws_iam_role.apigw_logs_role.arn
 }
+
 
 # GET method (uses Cognito Auth)
 resource "aws_api_gateway_method" "get_upload_url_method" {
