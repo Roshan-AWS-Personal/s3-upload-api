@@ -24,7 +24,7 @@ resource "aws_api_gateway_authorizer" "cognito" {
 
 # 1) Create the CloudWatch Log Group for API Gateway access logs
 resource "aws_cloudwatch_log_group" "apigw_logs" {
-  name              = "/aws/api-gateway/${aws_api_gateway_rest_api.upload_api.name}/${var.stage_name}"
+  name              = "/aws/apigateway/${aws_api_gateway_rest_api.upload_api.id}/${var.stage_name}"
   retention_in_days = 14
 }
 
@@ -62,8 +62,8 @@ resource "aws_iam_role_policy" "apigw_logs_policy" {
         "logs:PutLogEvents"
       ],
       "Resource":[
-        "arn:aws:logs:${var.aws_region}:${data.aws_caller_identity.current.account_id}:log-group:/aws/api-gateway/${aws_api_gateway_rest_api.upload_api.name}/${var.stage_name}",
-        "arn:aws:logs:${var.aws_region}:${data.aws_caller_identity.current.account_id}:log-group:/aws/api-gateway/${aws_api_gateway_rest_api.upload_api.name}/${var.stage_name}:*"
+        "arn:aws:logs:${var.aws_region}:${data.aws_caller_identity.current.account_id}:log-group:/aws/apigateway/${aws_api_gateway_rest_api.upload_api.id}/${var.stage_name}",
+        "arn:aws:logs:${var.aws_region}:${data.aws_caller_identity.current.account_id}:log-group:/aws/apigateway/${aws_api_gateway_rest_api.upload_api.id}/${var.stage_name}:*"
       ]
     }
   ]
