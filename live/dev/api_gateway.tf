@@ -21,6 +21,32 @@ resource "aws_api_gateway_authorizer" "cognito" {
   provider_arns   = [aws_cognito_user_pool.main.arn]
 }
 
+resource "aws_iam_role" "apigw_logs" {
+  name = "APIGatewayCloudWatch"
+  assume_role_policy = <<EOF
+{
+  "Version":"2012-10-17",
+  "Statement":[{"Action":"sts:AssumeRole",
+                "Principal":{"Service":"apigateway.amazonaws.com"},
+                "Effect":"Allow","Sid":""}]
+}
+EOF
+}
+resource "aws_iam_role_policy" "apigw_logs_policy" {
+  role = aws_iam_role.apigw_logs.id
+  policy = <<EOF
+{
+  "Version":"2012-10-17",
+  "Statement":[{"Effect":"Allow","Action":["logs:CreateLogGroup","logs:CreateLogStream","logs:PutLogEvents"],
+                "Resource":"*"}]
+}
+EOF
+}
+
+resource "aws_api_gateway_account" "account" {
+  cloudwatch_role_arn = aws_iam_role.apigw_logs.arn
+}
+
 # GET method (uses Cognito Auth)
 resource "aws_api_gateway_method" "get_upload_url_method" {
   rest_api_id   = aws_api_gateway_rest_api.upload_api.id
@@ -172,6 +198,11 @@ resource "aws_api_gateway_stage" "stage" {
   stage_name    = var.stage_name
   rest_api_id   = aws_api_gateway_rest_api.upload_api.id
   deployment_id = aws_api_gateway_deployment.api_deployment.id
+  xray_tracing_enabled = true
+  access_log_settings {
+    destination_arn = aws_iam_role.apigw_logs.arn
+    format          = "$context.requestId $context.identity.sourceIp $context.httpMethod $context.resourcePath $context.status"
+  }
 
   depends_on = [aws_api_gateway_deployment.api_deployment]
 }
