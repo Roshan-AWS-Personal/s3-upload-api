@@ -18,19 +18,17 @@
   </style>
 </head>
 <body>
-
   <nav>
     <a href="index.html"><strong>Upload</strong></a>
     <a href="list.html">View Files</a>
   </nav>
-
   <div class="container">
     <h2>Upload Files</h2>
     <form id="uploadForm">
       <input type="file" id="fileInput" multiple />
       <button type="submit">Upload</button>
     </form>
-    <img id="preview" alt="Image preview" style="display: none;" />
+    <img id="preview" style="display:none;" />
     <div id="statusContainer"></div>
   </div>
 
@@ -44,13 +42,13 @@
     const urlParams = new URLSearchParams(window.location.search);
     const code      = urlParams.get("code");
 
-    // 1) Always consume the OAuth2 code if present
+    // 1) Exchange code if present
     if (code) {
       const body = new URLSearchParams({
         grant_type:   "authorization_code",
         client_id:    CLIENT_ID,
         code:         code,
-        redirect_uri: REDIRECT_URI,
+        redirect_uri: REDIRECT_URI
       });
 
       fetch(`${COGNITO_DOMAIN}/oauth2/token`, {
@@ -58,29 +56,21 @@
         headers: { "Content-Type": "application/x-www-form-urlencoded" },
         body:    body
       })
-      .then(res => {
-        if (!res.ok) throw new Error("Token exchange failed");
-        return res.json();
-      })
+      .then(r => { if (!r.ok) throw new Error("Token exchange failed"); return r.json(); })
       .then(tokens => {
-        // break any previous login‐loop guard
         sessionStorage.removeItem("logging_in");
-
         localStorage.setItem("id_token",     tokens.id_token);
         localStorage.setItem("access_token", tokens.access_token);
-
-        // remove ?code and reload cleanly
         window.location.replace(window.location.origin + window.location.pathname);
       })
-      .catch(err => {
-        console.error("Token exchange error:", err);
-        alert("Authentication failed.");
+      .catch(e => {
+        console.error(e);
+        alert("Auth failed.");
       });
-
-      return; // pause until exchange completes
+      return;
     }
 
-    // 2) If no token, redirect into Hosted UI—but only once
+    // 2) Redirect to login only once
     const token = localStorage.getItem("access_token") || localStorage.getItem("id_token");
     if (!token) {
       if (!sessionStorage.getItem("logging_in")) {
@@ -88,83 +78,72 @@
         const loginUrl =
           `${COGNITO_DOMAIN}/login?response_type=code` +
           `&client_id=${CLIENT_ID}` +
-          `&redirect_uri=${encodeURIComponent(REDIRECT_URI)}` +
+          `&redirect_uri=$${encodeURIComponent(REDIRECT_URI)}` +
           `&scope=openid+email+profile`;
         window.location.href = loginUrl;
       }
       return;
     }
 
-    // 3) At this point, we have a valid token—wire up your upload form
+    // 3) Upload logic
     const fileInput       = document.getElementById("fileInput");
     const preview         = document.getElementById("preview");
     const uploadForm      = document.getElementById("uploadForm");
     const statusContainer = document.getElementById("statusContainer");
 
     fileInput.addEventListener("change", () => {
-      const file = fileInput.files[0];
-      if (file && file.type.startsWith("image/")) {
-        preview.src = URL.createObjectURL(file);
+      const f = fileInput.files[0];
+      if (f && f.type.startsWith("image/")) {
+        preview.src = URL.createObjectURL(f);
         preview.style.display = "block";
       } else {
         preview.style.display = "none";
       }
     });
 
-    uploadForm.addEventListener("submit", async (e) => {
+    uploadForm.addEventListener("submit", async e => {
       e.preventDefault();
       statusContainer.innerHTML = "";
 
-      for (const file of fileInput.files) {
-        // double‐escaped so Terraform leaves it intact
-        const status = createStatusBlock(`$${file.name}: Uploading…`);
-
+      for (const f of fileInput.files) {
+        const status = createStatusBlock(`$${f.name}: Uploading…`);
         try {
-          const query = new URLSearchParams({
-            filename:     file.name,
-            content_type: file.type,
-            filesize:     file.size.toString(),
+          const q = new URLSearchParams({
+            filename:     f.name,
+            content_type: f.type,
+            filesize:     f.size.toString(),
           });
 
-          // get presigned URL
-          const presignRes = await fetch(`${API_URL}?$${query.toString()}`, {
+          const pre = await fetch(`${API_URL}?$${q.toString()}`, {
             method:  "GET",
             headers: { Authorization: `Bearer ${token}` }
           });
-          if (!presignRes.ok) {
-            const msg = await presignRes.text();
-            throw new Error(msg || presignRes.statusText);
-          }
+          if (!pre.ok) throw new Error(await pre.text() || pre.statusText);
 
-          const { upload_url } = await presignRes.json();
-
-          // PUT to S3 with correct Content-Type
-          const uploadRes = await fetch(upload_url, {
+          const { upload_url } = await pre.json();
+          const putRes = await fetch(upload_url, {
             method:  "PUT",
-            headers: { "Content-Type": file.type },
-            body:    file
+            headers: { "Content-Type": f.type },
+            body:    f
           });
-          if (!uploadRes.ok) {
-            throw new Error(`Upload failed ($${uploadRes.status})`);
-          }
+          if (!putRes.ok) throw new Error(`Upload failed ($${putRes.status})`);
 
-          // strip off the query, show final URL
-          const fileUrl = upload_url.split("?")[0];
-          status.innerHTML = `✅ <strong>$${file.name}</strong>: <a href="$${fileUrl}" target="_blank">$${fileUrl}</a>`;
+          const clean = upload_url.split("?")[0];
+          status.innerHTML = `✅ <strong>$${f.name}</strong>: <a href="$${clean}" target="_blank">$${clean}</a>`;
           status.classList.add("success");
         } catch (err) {
-          status.innerHTML = `❌ $${file.name}: ${err.message}`;
+          status.innerHTML = `❌ ${f.name}: ${err.message}`;
           status.classList.add("error");
         }
       }
     });
 
-    function createStatusBlock(message) {
-      const div = document.createElement("div");
-      div.className = "status";
-      div.textContent = message;
-      statusContainer.appendChild(div);
-      return div;
+    function createStatusBlock(msg) {
+      const d = document.createElement("div");
+      d.className = "status";
+      d.textContent = msg;
+      statusContainer.appendChild(d);
+      return d;
     }
   </script>
 </body>
