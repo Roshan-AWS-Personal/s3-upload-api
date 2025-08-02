@@ -108,7 +108,7 @@
             filesize:     f.size.toString()
           });
           const pre = await fetch(`${API_URL}?$${q.toString()}`, {
-            headers: { Authorization: `Bearer ${token}` }
+            headers: { Authorization: `Bearer $${token}` }
           });
           if (!pre.ok) throw new Error(await pre.text()||pre.statusText);
 
