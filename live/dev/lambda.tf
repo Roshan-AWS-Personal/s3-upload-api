@@ -284,6 +284,17 @@ resource "aws_iam_role_policy" "lambda_dynamodb_read_policy" {
           # your GSI on that table
           "${aws_dynamodb_table.file_upload_metadata.arn}/index/username-index"
         ]
+      },
+      {
+        Effect = "Allow",
+        Action = [
+          "s3:GetObject"
+        ],
+        Resource = [
+          # replace with your actual bucket name or use the bucket resource
+          "${aws_s3_bucket.image_upload_bucket.arn}/*",
+          "${aws_s3_bucket.documents_bucket.arn}/*"
+        ]
       }
     ]
   })
