@@ -23,7 +23,7 @@ variable "upload_api_secret" {
 variable "stage_name" {
   description = "The stage name for the API Gateway"
   type        = string
-  default     = "prod"
+  default     = "dev"
 }
 
 variable "upload_api_url" {
@@ -51,3 +51,4 @@ variable "cognito_client_id" {
   description = "Cognito App Client ID"
   type        = string
 }
+

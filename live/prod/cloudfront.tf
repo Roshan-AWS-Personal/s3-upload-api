@@ -6,6 +6,26 @@ resource "aws_cloudfront_origin_access_control" "s3_oac" {
   description                       = "OAC for S3 frontend site"
 }
 
+data "aws_cloudfront_cache_policy" "optimized" {
+  name = "Managed-CachingOptimized"
+}
+
+resource "aws_cloudfront_origin_request_policy" "s3_safe" {
+  name = "s3-safe-policy"
+
+  cookies_config {
+    cookie_behavior = "none"
+  }
+
+  headers_config {
+    header_behavior = "none"
+  }
+
+  query_strings_config {
+    query_string_behavior = "none"
+  }
+}
+
 resource "aws_cloudfront_distribution" "frontend" {
   enabled             = true
   default_root_object = "index.html"
@@ -21,15 +41,11 @@ resource "aws_cloudfront_distribution" "frontend" {
     allowed_methods  = ["GET", "HEAD"]
     cached_methods   = ["GET", "HEAD"]
     target_origin_id = "s3-upload-site"
-
     viewer_protocol_policy = "redirect-to-https"
+    compress         = true
 
-    forwarded_values {
-      query_string = false
-      cookies {
-        forward = "none"
-      }
-    }
+    cache_policy_id           = data.aws_cloudfront_cache_policy.optimized.id
+    origin_request_policy_id  = aws_cloudfront_origin_request_policy.s3_safe.id
   }
 
   restrictions {
