@@ -1,12 +1,14 @@
 import boto3
 import json
 import logging
+import os
 from decimal import Decimal
 from boto3.dynamodb.conditions import Key
 
 # --- setup DynamoDB & logging ---
 dynamodb = boto3.resource("dynamodb")
 table = dynamodb.Table("file_upload_metadata")
+s3 = boto3.client("s3")
 
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
@@ -60,6 +62,13 @@ def lambda_handler(event, context):
         )
 
         uploads = result.get("Items", [])
+        for item in uploads:
+            key = item["filename"]            # or item["key"] if that's your attr
+            item["s3_url"] = s3.generate_presigned_url(
+                ClientMethod="get_object",
+                Params={"Bucket": os.environ.get("IMAGES_BUCKET"), "Key": key},
+                ExpiresIn=3600                   # 1 hour expiry
+            )
         return response(200, {"uploads": uploads})
 
     except Exception as e:
