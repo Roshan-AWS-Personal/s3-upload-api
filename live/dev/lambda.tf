@@ -253,6 +253,8 @@ resource "aws_lambda_function" "list_uploads" {
   environment {
     variables = {
       DDB_TABLE = "file_upload_metadata"
+      IMAGES_BUCKET      = aws_s3_bucket.image_upload_bucket.bucket
+      DOCUMENTS_BUCKET   = aws_s3_bucket.documents_bucket.bucket
     }
   }
 }
