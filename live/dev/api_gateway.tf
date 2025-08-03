@@ -21,6 +21,45 @@ resource "aws_api_gateway_authorizer" "cognito" {
   provider_arns   = [aws_cognito_user_pool.main.arn]
 }
 
+# 1) Your CloudWatch Log Group
+resource "aws_cloudwatch_log_group" "apigw_logs" {
+  name              = "/aws/apigateway/${aws_api_gateway_rest_api.upload_api.id}/${var.stage_name}"
+  retention_in_days = 14
+}
+
+# 2) The role API Gateway will assume
+resource "aws_iam_role" "apigw_logs_role" {
+  name = "APIGatewayCloudWatchLogsRole"
+
+  assume_role_policy = <<EOF
+{
+  "Version":"2012-10-17",
+  "Statement":[
+    {
+      "Effect":"Allow",
+      "Principal":{"Service":"apigateway.amazonaws.com"},
+      "Action":"sts:AssumeRole"
+    }
+  ]
+}
+EOF
+}
+
+# 3) Attach AWS’s managed policy (no custom inline policy needed)
+resource "aws_iam_role_policy_attachment" "apigw_logs_managed" {
+  role       = aws_iam_role.apigw_logs_role.name
+  policy_arn = "arn:aws:iam::aws:policy/service-role/AmazonAPIGatewayPushToCloudWatchLogs"
+}
+
+data "aws_caller_identity" "current" {}
+
+# 4) Point API Gateway at that role
+resource "aws_api_gateway_account" "account" {
+  cloudwatch_role_arn = aws_iam_role.apigw_logs_role.arn
+}
+
+
+
 # GET method (uses Cognito Auth)
 resource "aws_api_gateway_method" "get_upload_url_method" {
   rest_api_id   = aws_api_gateway_rest_api.upload_api.id
@@ -151,7 +190,15 @@ resource "aws_api_gateway_deployment" "api_deployment" {
     redeploy = sha1(jsonencode([
       aws_api_gateway_resource.upload.id,
       aws_api_gateway_method.get_upload_url_method.id,
-      aws_api_gateway_integration.lambda_integration.id
+      aws_api_gateway_integration.lambda_integration.id,
+      aws_api_gateway_resource.upload.id,
+      aws_api_gateway_method.get_upload_url_method.id,
+      aws_api_gateway_integration.lambda_integration.id,
+      aws_api_gateway_resource.files.id,
+      aws_api_gateway_method.get_files.id,
+      aws_api_gateway_integration.get_files_integration.id,
+      aws_api_gateway_method.files_options.id,
+      aws_api_gateway_integration.files_options_mock.id
     ]))
   }
 
@@ -160,16 +207,118 @@ resource "aws_api_gateway_deployment" "api_deployment" {
   }
 }
 
+############################################
+# 4) Configure your Stage’s Access Logging
+############################################
+# 5) Finally, in your Stage, point access_log_settings at the LOG GROUP (not the role)
 resource "aws_api_gateway_stage" "stage" {
   stage_name    = var.stage_name
   rest_api_id   = aws_api_gateway_rest_api.upload_api.id
   deployment_id = aws_api_gateway_deployment.api_deployment.id
 
-  depends_on = [aws_api_gateway_deployment.api_deployment]
+  xray_tracing_enabled = true
+
+  access_log_settings {
+    destination_arn = aws_cloudwatch_log_group.apigw_logs.arn
+    format          = "$context.requestId $context.identity.sourceIp $context.httpMethod $context.resourcePath $context.status"
+  }
+
+  depends_on = [
+    aws_api_gateway_account.account
+  ]
 }
 
 # Output API URL
 output "upload_api_url" {
   value = "https://${aws_api_gateway_rest_api.upload_api.id}.execute-api.${var.aws_region}.amazonaws.com/${aws_api_gateway_stage.stage.stage_name}/upload"
+}
+
+resource "aws_api_gateway_resource" "files" {
+  rest_api_id = aws_api_gateway_rest_api.upload_api.id
+  parent_id   = aws_api_gateway_rest_api.upload_api.root_resource_id
+  path_part   = "files"
+}
+
+resource "aws_api_gateway_method" "get_files" {
+  rest_api_id   = aws_api_gateway_rest_api.upload_api.id
+  resource_id   = aws_api_gateway_resource.files.id
+  http_method   = "GET"
+  authorization = "COGNITO_USER_POOLS"
+  authorizer_id = aws_api_gateway_authorizer.cognito.id
+}
+
+resource "aws_api_gateway_integration" "get_files_integration" {
+  rest_api_id             = aws_api_gateway_rest_api.upload_api.id
+  resource_id             = aws_api_gateway_resource.files.id
+  http_method             = aws_api_gateway_method.get_files.http_method
+  integration_http_method = "POST"
+  type                    = "AWS_PROXY"
+  uri                     = aws_lambda_function.list_uploads.invoke_arn
+}
+
+resource "aws_lambda_permission" "api_gateway_list_files" {
+  statement_id  = "AllowAPIGatewayInvokeListFiles"
+  action        = "lambda:InvokeFunction"
+  function_name = aws_lambda_function.list_uploads.function_name
+  principal     = "apigateway.amazonaws.com"
+  source_arn    = "${aws_api_gateway_rest_api.upload_api.execution_arn}/*/GET/files"
+}
+
+# OPTIONS method for /files (CORS)
+resource "aws_api_gateway_method" "files_options" {
+  rest_api_id   = aws_api_gateway_rest_api.upload_api.id
+  resource_id   = aws_api_gateway_resource.files.id
+  http_method   = "OPTIONS"
+  authorization = "NONE"
+}
+
+resource "aws_api_gateway_integration" "files_options_mock" {
+  rest_api_id = aws_api_gateway_rest_api.upload_api.id
+  resource_id = aws_api_gateway_resource.files.id
+  http_method = aws_api_gateway_method.files_options.http_method
+  type        = "MOCK"
+
+  request_templates = {
+    "application/json" = "{\"statusCode\": 200}"
+  }
+}
+
+resource "aws_api_gateway_method_response" "files_options_response" {
+  rest_api_id = aws_api_gateway_rest_api.upload_api.id
+  resource_id = aws_api_gateway_resource.files.id
+  http_method = aws_api_gateway_method.files_options.http_method
+  status_code = "200"
+
+  response_models = {
+    "application/json" = "Empty"
+  }
+
+  response_parameters = {
+    "method.response.header.Access-Control-Allow-Headers" = true
+    "method.response.header.Access-Control-Allow-Methods" = true
+    "method.response.header.Access-Control-Allow-Origin"  = true
+  }
+}
+
+resource "aws_api_gateway_integration_response" "files_options_response" {
+  rest_api_id = aws_api_gateway_rest_api.upload_api.id
+  resource_id = aws_api_gateway_resource.files.id
+  http_method = aws_api_gateway_method.files_options.http_method
+  status_code = "200"
+
+  response_parameters = {
+    "method.response.header.Access-Control-Allow-Headers" = "'Content-Type,Authorization'"
+    "method.response.header.Access-Control-Allow-Methods" = "'OPTIONS,GET'"
+    "method.response.header.Access-Control-Allow-Origin"  = "'*'"
+  }
+
+  response_templates = {
+    "application/json" = ""
+  }
+
+  depends_on = [
+    aws_api_gateway_integration.files_options_mock,
+    aws_api_gateway_method_response.files_options_response
+  ]
 }
 

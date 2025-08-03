@@ -13,7 +13,7 @@ resource "aws_cognito_user_pool" "main" {
 }
 
 resource "aws_cognito_user_pool_client" "frontend" {
-  name         = "upload-frontend-client-${var.env}"
+  name         = "upload-frontend-client"
   user_pool_id = aws_cognito_user_pool.main.id
   generate_secret = false
 

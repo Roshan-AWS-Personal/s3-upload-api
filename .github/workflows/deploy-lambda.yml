@@ -60,6 +60,12 @@ jobs:
           zip -r ../../event_logger.zip .
           cd ../..
 
+      - name: Zip list_uploads Lambda
+        run: |
+          cd lambda/list_uploads
+          zip -r ../../list_uploads.zip .
+          cd ../..
+
       - name: Deploy uploader Lambda
         run: |
           aws lambda update-function-code \
@@ -71,3 +77,10 @@ jobs:
           aws lambda update-function-code \
             --function-name "$EVENT_LOGGER_FN" \
             --zip-file fileb://event_logger.zip
+      
+      - name: Deploy list_uploads Lambda
+        run: |
+          aws lambda update-function-code \
+            --function-name "$LIST_UPLOADS_FN" \
+            --zip-file fileb://list_uploads.zip
+      

@@ -135,10 +135,8 @@ resource "aws_kms_alias" "lambda_key_alias" {
   target_key_id = aws_kms_key.lambda_key.id
 }
 
-data "aws_caller_identity" "current" {}
-
 resource "aws_lambda_function" "image_uploader" {
-  function_name = "image-uploader-${var.env}"
+  function_name = "image-uploader-dev"
   kms_key_arn   = aws_kms_key.lambda_key.arn
 
   filename         = data.archive_file.upload_lambda_zip.output_path
@@ -240,5 +238,80 @@ resource "aws_iam_role_policy" "dynamodb_write_policy" {
         Resource = aws_dynamodb_table.file_upload_metadata.arn
       }
     ]
+  })
+}
+
+resource "aws_lambda_function" "list_uploads" {
+  function_name = "list_uploads"
+  runtime       = "python3.12"
+  role          = aws_iam_role.list_uploads_exec_role.arn
+  handler       = "list_uploads.lambda_handler"
+
+  filename         = data.archive_file.list_uploads_zip.output_path
+  source_code_hash = data.archive_file.list_uploads_zip.output_base64sha256
+
+  environment {
+    variables = {
+      DDB_TABLE = "file_upload_metadata"
+      IMAGES_BUCKET      = aws_s3_bucket.image_upload_bucket.bucket
+      DOCUMENTS_BUCKET   = aws_s3_bucket.documents_bucket.bucket
+    }
+  }
+}
+
+data "archive_file" "list_uploads_zip" {
+  type        = "zip"
+  source_dir  = "${path.module}/lambda/list_uploads"
+  output_path = "${path.module}/zips/list_uploads.zip"
+}
+
+resource "aws_iam_role_policy" "lambda_dynamodb_read_policy" {
+  name = "lambda-dynamodb-read-policy"
+  role = aws_iam_role.list_uploads_exec_role.name
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect   = "Allow"
+        Action   = [
+          "dynamodb:Query",
+          "dynamodb:Scan"
+        ]
+        Resource = [
+          # your table
+          aws_dynamodb_table.file_upload_metadata.arn,
+          # your GSI on that table
+          "${aws_dynamodb_table.file_upload_metadata.arn}/index/username-index"
+        ]
+      },
+      {
+        Effect = "Allow",
+        Action = [
+          "s3:GetObject"
+        ],
+        Resource = [
+          # replace with your actual bucket name or use the bucket resource
+          "${aws_s3_bucket.image_upload_bucket.arn}/*",
+          "${aws_s3_bucket.documents_bucket.arn}/*"
+        ]
+      }
+    ]
+  })
+}
+
+
+resource "aws_iam_role" "list_uploads_exec_role" {
+  name = "list-uploads-lambda-role"
+
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17",
+    Statement = [{
+      Action = "sts:AssumeRole",
+      Effect = "Allow",
+      Principal = {
+        Service = "lambda.amazonaws.com"
+      }
+    }]
   })
 }

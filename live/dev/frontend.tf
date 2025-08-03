@@ -61,3 +61,24 @@ resource "aws_s3_object" "index_html" {
   content_type = "text/html"
 }
 
+resource "aws_s3_object" "list_html" {
+  bucket = aws_s3_bucket.frontend_site.id
+  key    = "list.html"
+  content = data.template_file.list_html.rendered
+  content_type = "text/html"
+}
+
+data "template_file" "list_html" {
+  template = file("${path.module}/frontend/list.html.tpl")
+
+  vars = {
+    API_URL         = var.upload_api_url
+    COGNITO_DOMAIN  = var.cognito_domain
+    CLIENT_ID       = var.cognito_client_id
+    REDIRECT_URI    = var.logout_redirect_url
+  }
+}
+
+
+
+

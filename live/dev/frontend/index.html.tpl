@@ -7,6 +7,9 @@
   <style>
     body { font-family: sans-serif; margin: 2rem; }
     .container { max-width: 600px; margin: auto; }
+    nav { margin-bottom: 1rem; }
+    nav a { margin-right: 1rem; text-decoration: none; color: #0366d6; }
+    nav a:hover { text-decoration: underline; }
     #preview { display: block; margin-top: 1rem; max-width: 100%; }
     #urlDisplay { margin-top: 1rem; font-weight: bold; }
     .success { color: green; }
@@ -15,6 +18,12 @@
   </style>
 </head>
 <body>
+  <!-- Shared header/navigation -->
+  <nav>
+    <a href="index.html"><strong>Upload</strong></a>
+    <a href="list.html">View Files</a>
+  </nav>
+
   <div class="container">
     <h2>Upload Files</h2>
     <button id="logoutBtn">Logout</button>
@@ -190,6 +199,9 @@
 
           const uploadRes = await fetch(data.upload_url, {
             method: 'PUT',
+            headers: {
+              "Content-Type": file.type // ✅ This fixes the presigned upload issue!
+            },
             body: file
           });
 
