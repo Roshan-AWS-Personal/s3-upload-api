@@ -39,10 +39,10 @@
   </table>
 
   <script>
-    const API_URL = "https://n3bcr23wm1.execute-api.ap-southeast-2.amazonaws.com/dev/files";
+    const API_URL = "https://ga3090035l.execute-api.ap-southeast-2.amazonaws.com/dev/files";
     const COGNITO_DOMAIN = "${COGNITO_DOMAIN}";
     const CLIENT_ID = "${CLIENT_ID}";
-    const REDIRECT_URI = "https://d3oxbj8znjk30z.cloudfront.net/list.html";
+    const REDIRECT_URI = "https://d37ne0mpyi4d5o.cloudfront.net/list.html";
 
     const token = localStorage.getItem("id_token");
 
