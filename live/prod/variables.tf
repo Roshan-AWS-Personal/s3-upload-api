@@ -23,13 +23,13 @@ variable "upload_api_secret" {
 variable "stage_name" {
   description = "The stage name for the API Gateway"
   type        = string
-  default     = "dev"
+  default     = "prod"
 }
 
 variable "upload_api_url" {
   description = "URL for the API Gateway"
   type        = string
-  default     = "dev"
+  default     = "prod"
 }
 
 variable "login_redirect_url" {
