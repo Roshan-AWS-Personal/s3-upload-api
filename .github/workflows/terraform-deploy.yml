@@ -33,6 +33,7 @@ jobs:
       AWS_UPLOAD_API_SECRET_PROD: ${{ secrets.UPLOAD_API_SECRET_PROD }}
       AWS_UPLOAD_API_URL_DEV:    ${{ secrets.AWS_API_URL_DEV }}
       AWS_UPLOAD_API_URL_PROD:   ${{ secrets.AWS_API_URL_PROD }}
+      AWS_LIST_API_URL_REDIRECT_DEV: ${{ secrets.AWS_API_URL_LIST_FILES_DEV}}
 
       # Backend resources
       STATE_BUCKET_DEV:   ${{ secrets.STATE_BUCKET_DEV }}
@@ -88,9 +89,13 @@ jobs:
             COGNITO_CLIENT_ID=${{ secrets.COGNITO_CLIENT_ID_DEV }}
             COGNITO_DOMAIN=${{ secrets.COGNITO_DOMAIN_DEV }}
             LOGIN_URL=${{ secrets.LOGIN_URL_DEV }}
+            REDIRECT_URI_LIST=${{ secrets.AWS_API_LIST_REDIRECT_URL_DEV }}
+            API_URL_LIST_FILES=${{ secrets.AWS_API_URL_LIST_FILES_DEV }}
           else
             SECRET=${{ env.AWS_UPLOAD_API_SECRET_PROD }}
             API_URL=${{ env.AWS_UPLOAD_API_URL_PROD }}
+            API_URL_LIST_FILES=${{ secrets.AWS_API_URL_LIST_FILES_PROD }}
+            REDIRECT_URI_LIST=${{ secrets.AWS_API_URL_LIST_FILES_PROD }}
             COGNITO_CLIENT_ID=${{ secrets.COGNITO_CLIENT_ID_PROD }}
             COGNITO_DOMAIN=${{ secrets.COGNITO_DOMAIN_PROD }}
             LOGIN_URL=${{ secrets.LOGIN_URL_PROD }}
@@ -107,6 +112,8 @@ jobs:
             -var="logout_redirect_url=$LOGIN_URL" \
             -var="cognito_client_id=$COGNITO_CLIENT_ID" \
             -var="cognito_domain=$COGNITO_DOMAIN" \
+            -var="redirect_uri_list=$AWS_LIST_API_URL_REDIRECT_DEV" \
+            -var="list_api_url=$API_URL_LIST_FILES" \
             -out=tfplan
 
       - name: Terraform Apply (manual)

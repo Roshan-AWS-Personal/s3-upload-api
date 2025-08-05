@@ -32,6 +32,12 @@ variable "upload_api_url" {
   default     = "dev"
 }
 
+variable "list_api_url" {
+  description = "List URL for the API Gateway"
+  type        = string
+  default     = "dev"
+}
+
 variable "login_redirect_url" {
   description = "Frontend URL to redirect after successful login"
   type        = string
@@ -40,6 +46,11 @@ variable "login_redirect_url" {
 variable "logout_redirect_url" {
   description = "Frontend URL to redirect after logout"
   type        = string
+}
+
+variable "redirect_uri_list" {
+  description = "URL for the list API Gateway"
+  type        = string  
 }
 
 variable "cognito_domain" {
