@@ -42,6 +42,17 @@ variable "logout_redirect_url" {
   type        = string
 }
 
+variable "list_api_url" {
+  description = "List URL for the API Gateway"
+  type        = string
+  default     = "dev"
+}
+
+variable "redirect_uri_list" {
+  description = "URL for the list API Gateway"
+  type        = string  
+}
+
 variable "cognito_domain" {
   description = "Cognito Hosted UI domain"
   type        = string

@@ -72,10 +72,10 @@ data "template_file" "list_html" {
   template = file("${path.module}/frontend/list.html.tpl")
 
   vars = {
-    API_URL         = var.upload_api_url
+    API_URL         = var.list_api_url
     COGNITO_DOMAIN  = var.cognito_domain
     CLIENT_ID       = var.cognito_client_id
-    REDIRECT_URI    = var.logout_redirect_url
+    REDIRECT_URI    = var.redirect_uri_list
   }
 }
 
