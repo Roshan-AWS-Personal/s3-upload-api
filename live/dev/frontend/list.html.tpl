@@ -2,40 +2,43 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
+  <title>Uploaded Files</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>File Upload</title>
   <style>
-    body { font-family: sans-serif; margin: 2rem; }
-    .container { max-width: 600px; margin: auto; }
-    nav { margin-bottom: 1rem; }
+    body { font-family: sans-serif; padding: 2em; }
+    nav { margin-bottom: 2rem; }
     nav a { margin-right: 1rem; text-decoration: none; color: #0366d6; }
     nav a:hover { text-decoration: underline; }
-    #preview { display: block; margin-top: 1rem; max-width: 100%; }
-    #urlDisplay { margin-top: 1rem; font-weight: bold; }
-    .success { color: green; }
-    .error { color: red; }
-    #logoutBtn { margin-top: 1rem; display: none; }
+    table { width: 100%; border-collapse: collapse; margin-top: 1em; }
+    th, td { padding: 0.5em; border: 1px solid #ccc; }
+    th { background: #f0f0f0; }
+    .error { color: red; margin-top: 1em; }
   </style>
 </head>
 <body>
-  <!-- Navigation -->
+
   <nav>
-    <a href="index.html"><strong>Upload</strong></a>
-    <a href="list.html">View Files</a>
+    <a href="index.html">Upload</a>
+    <a href="list.html"><strong>View Files</strong></a>
   </nav>
 
-  <div class="container">
-    <h2>Upload Files</h2>
-    <button id="logoutBtn">Logout</button>
-    <form id="uploadForm">
-      <input type="file" id="fileInput" multiple />
-      <button type="submit">Upload</button>
-    </form>
-    <div id="status"></div>
-  </div>
+  <h1>Uploaded Files</h1>
+  <div id="loading">Loading...</div>
+  <div id="error" class="error" style="display: none;"></div>
+  <table id="uploadsTable" style="display: none;">
+    <thead>
+      <tr>
+        <th>Filename</th>
+        <th>Uploader</th>
+        <th>Size (KB)</th>
+        <th>Timestamp</th>
+        <th>S3 Link</th>
+      </tr>
+    </thead>
+    <tbody id="uploadsBody"></tbody>
+  </table>
 
   <script>
-    /* Terraform-injected values: DO NOT ESCAPE THESE */
     const API_URL = "${API_URL}";
     const COGNITO_DOMAIN = "${COGNITO_DOMAIN}";
     const CLIENT_ID = "${CLIENT_ID}";
@@ -44,60 +47,46 @@
     const token = localStorage.getItem("id_token");
 
     if (!token) {
-      const loginUrl = `${COGNITO_DOMAIN}/login?response_type=token&client_id=$${CLIENT_ID}&redirect_uri=$${encodeURIComponent(REDIRECT_URI)}&scope=openid+email+profile`;
+      const loginUrl = `${COGNITO_DOMAIN}/login?response_type=token&client_id=${CLIENT_ID}&redirect_uri=$${encodeURIComponent(REDIRECT_URI)}&scope=openid+email+profile`;
       window.location.href = loginUrl;
-    }
-
-    document.getElementById("uploadForm").addEventListener("submit", async (e) => {
-      e.preventDefault();
-      const fileInput = document.getElementById("fileInput");
-      if (!fileInput.files.length) return;
-
-      const file = fileInput.files[0];
-      document.getElementById("status").textContent = "Requesting upload URL...";
-
-      try {
-        const presignRes = await fetch(API_URL, {
-          method: "POST",
-          headers: {
-            "Authorization": "Bearer " + token,
-            "Content-Type": "application/json"
-          },
-          body: JSON.stringify({ filename: file.name, type: file.type })
-        });
-
-        if (presignRes.status === 401) {
-          localStorage.removeItem("id_token");
-          const loginUrl = `${COGNITO_DOMAIN}/login?response_type=token&client_id=$${CLIENT_ID}&redirect_uri=$${encodeURIComponent(REDIRECT_URI)}&scope=openid+email+profile`;
-          window.location.href = loginUrl;
-          return;
+    } else {
+      fetch(API_URL, {
+        method: "GET",
+        headers: {
+          "Authorization": "Bearer " + token
         }
+      })
+      .then(res => {
+        if (!res.ok) throw new Error("Auth failed or bad response");
+        return res.json();
+      })
+      .then(data => {
+        const uploads = data.uploads || [];
 
-        if (!presignRes.ok) throw new Error("Failed to get upload URL");
+        document.getElementById("loading").style.display = "none";
+        const table = document.getElementById("uploadsTable");
+        const tbody = document.getElementById("uploadsBody");
+        table.style.display = "table";
 
-        const { upload_url, file_url } = await presignRes.json();
-
-        document.getElementById("status").textContent = "Uploading file...";
-
-        const uploadRes = await fetch(upload_url, {
-          method: "PUT",
-          body: file
+        uploads.forEach(item => {
+          const row = document.createElement("tr");
+          row.innerHTML =
+            "<td>" + item.filename + "</td>" +
+            "<td>" + (item.uploader || "-") + "</td>" +
+            "<td>" + (item.size / 1024).toFixed(1) + "</td>" +
+            "<td>" + new Date(item.timestamp).toLocaleString() + "</td>" +
+            "<td><a href='" + item.s3_url + "' target='_blank'>View</a></td>";
+          tbody.appendChild(row);
         });
-
-        if (!uploadRes.ok) throw new Error("Upload failed");
-
-        document.getElementById("status").innerHTML =
-          `<span class="success">Upload successful! <a href="$${file_url}" target="_blank">View file</a></span>`;
-      } catch (err) {
-        document.getElementById("status").innerHTML =
-          `<span class="error">$${err.message}</span>`;
-      }
-    });
-
-    document.getElementById("logoutBtn").addEventListener("click", () => {
-      localStorage.removeItem("id_token");
-      window.location.href = `${COGNITO_DOMAIN}/logout?client_id=$${CLIENT_ID}&logout_uri=$${encodeURIComponent(REDIRECT_URI)}`;
-    });
+      })
+      .catch(err => {
+        document.getElementById("loading").style.display = "none";
+        const errorDiv = document.getElementById("error");
+        errorDiv.style.display = "block";
+        errorDiv.textContent = "Failed to load uploads: " + err.message;
+        console.error(err);
+      });
+    }
   </script>
 </body>
 </html>

@@ -18,7 +18,7 @@
   </style>
 </head>
 <body>
-  <!-- Navigation -->
+  <!-- Shared header/navigation -->
   <nav>
     <a href="index.html"><strong>Upload</strong></a>
     <a href="list.html">View Files</a>
@@ -31,72 +31,204 @@
       <input type="file" id="fileInput" multiple />
       <button type="submit">Upload</button>
     </form>
-    <div id="status"></div>
+    <img id="preview" style="display: none;" alt="Image preview" />
+    <div id="urlDisplay"></div>
   </div>
 
   <script>
-    /* Terraform-injected values: DO NOT ESCAPE THESE */
     const API_URL = "${API_URL}";
     const COGNITO_DOMAIN = "${COGNITO_DOMAIN}";
     const CLIENT_ID = "${CLIENT_ID}";
     const REDIRECT_URI = "${REDIRECT_URI}";
 
-    const token = localStorage.getItem("id_token");
-
-    if (!token) {
-      const loginUrl = `${COGNITO_DOMAIN}/login?response_type=token&client_id=$${CLIENT_ID}&redirect_uri=$${encodeURIComponent(REDIRECT_URI)}&scope=openid+email+profile`;
-      window.location.href = loginUrl;
+    function decodeJwt(token) {
+      try {
+        const payload = token.split('.')[1];
+        const decoded = atob(payload.replace(/-/g, '+').replace(/_/g, '/'));
+        return JSON.parse(decoded);
+      } catch (e) {
+        console.warn("Failed to decode JWT:", e);
+        return {};
+      }
     }
 
-    document.getElementById("uploadForm").addEventListener("submit", async (e) => {
-      e.preventDefault();
-      const fileInput = document.getElementById("fileInput");
-      if (!fileInput.files.length) return;
+    async function handleCognitoLoginRedirect() {
+      const params = new URLSearchParams(window.location.search);
+      const code = params.get("code");
 
-      const file = fileInput.files[0];
-      document.getElementById("status").textContent = "Requesting upload URL...";
+      if (code) {
+        console.log("[Auth] Got code from redirect:", code);
+        try {
+          const tokenRes = await fetch(COGNITO_DOMAIN + "/oauth2/token", {
+            method: "POST",
+            headers: { "Content-Type": "application/x-www-form-urlencoded" },
+            body: new URLSearchParams({
+              grant_type: "authorization_code",
+              client_id: CLIENT_ID,
+              redirect_uri: REDIRECT_URI,
+              code: code
+            })
+          });
 
-      try {
-        const presignRes = await fetch(API_URL, {
-          method: "POST",
-          headers: {
-            "Authorization": "Bearer " + token,
-            "Content-Type": "application/json"
-          },
-          body: JSON.stringify({ filename: file.name, type: file.type })
-        });
+          const text = await tokenRes.text();
+          console.log("[Auth] Raw token response:", text);
 
-        if (presignRes.status === 401) {
-          localStorage.removeItem("id_token");
-          const loginUrl = `${COGNITO_DOMAIN}/login?response_type=token&client_id=$${CLIENT_ID}&redirect_uri=$${encodeURIComponent(REDIRECT_URI)}&scope=openid+email+profile`;
-          window.location.href = loginUrl;
-          return;
+          let tokenData;
+          try {
+            tokenData = JSON.parse(text);
+          } catch {
+            console.error("[Auth] Failed to parse token response:", text);
+            alert("Invalid token response");
+            return;
+          }
+
+          if (tokenData.id_token) {
+            localStorage.setItem("id_token", tokenData.id_token);
+            const decoded = decodeJwt(tokenData.id_token);
+            console.log("[Auth] ID token saved ✅");
+            console.log("[Auth] Token use:", decoded.token_use);
+            console.log("[Auth] Cognito username/email:", decoded["cognito:username"], decoded.email);
+          } else {
+            console.error("[Auth] No id_token found", tokenData);
+            alert("Login failed: No ID token returned.");
+            return;
+          }
+
+          window.history.replaceState({}, document.title, REDIRECT_URI);
+        } catch (err) {
+          console.error("[Auth] Token exchange failed:", err);
+          alert("OAuth error: " + err.message);
         }
+      }
+    }
 
-        if (!presignRes.ok) throw new Error("Failed to get upload URL");
+    async function ensureLoggedIn() {
+      const token = localStorage.getItem("id_token");
+      if (!token) {
+        const loginUrl = `${COGNITO_DOMAIN}/login?response_type=code&client_id=${CLIENT_ID}&redirect_uri=${REDIRECT_URI}&scope=openid+email+profile`;
+        const lastRedirect = sessionStorage.getItem("last_redirect");
 
-        const { upload_url, file_url } = await presignRes.json();
+        if (!lastRedirect || Date.now() - parseInt(lastRedirect) > 10000) {
+          sessionStorage.setItem("last_redirect", Date.now().toString());
+          window.location.href = loginUrl;
+        }
+      } else {
+        const decoded = decodeJwt(token);
+        console.log("[Auth] Logged in as:", decoded["cognito:username"] || "unknown", "| Token use:", decoded.token_use);
+        if (decoded.token_use !== "id") {
+          console.warn("[Auth] ⚠️ Token is not an ID token. API calls may fail.");
+        }
+        document.getElementById("logoutBtn").style.display = "inline-block";
+      }
+    }
 
-        document.getElementById("status").textContent = "Uploading file...";
+    document.getElementById("logoutBtn").onclick = function () {
+      localStorage.removeItem("id_token");
+      localStorage.removeItem("access_token");
+      window.location.href = `${COGNITO_DOMAIN}/logout?client_id=${CLIENT_ID}&logout_uri=${REDIRECT_URI}`;
+    };
 
-        const uploadRes = await fetch(upload_url, {
-          method: "PUT",
-          body: file
-        });
+    (async function () {
+      await handleCognitoLoginRedirect();
+      await ensureLoggedIn();
+    })();
 
-        if (!uploadRes.ok) throw new Error("Upload failed");
+    const form = document.getElementById('uploadForm');
+    const fileInput = document.getElementById('fileInput');
+    const preview = document.getElementById('preview');
+    const urlDisplay = document.getElementById('urlDisplay');
 
-        document.getElementById("status").innerHTML =
-          `<span class="success">Upload successful! <a href="$${file_url}" target="_blank">View file</a></span>`;
-      } catch (err) {
-        document.getElementById("status").innerHTML =
-          `<span class="error">$${err.message}</span>`;
+    fileInput.addEventListener('change', () => {
+      const file = fileInput.files[0];
+      if (file && file.type.startsWith("image/")) {
+        preview.src = URL.createObjectURL(file);
+        preview.style.display = 'block';
+      } else {
+        preview.style.display = 'none';
       }
     });
 
-    document.getElementById("logoutBtn").addEventListener("click", () => {
-      localStorage.removeItem("id_token");
-      window.location.href = `${COGNITO_DOMAIN}/logout?client_id=$${CLIENT_ID}&logout_uri=$${encodeURIComponent(REDIRECT_URI)}`;
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const files = fileInput.files;
+      const token = localStorage.getItem("id_token");
+
+      if (!files.length) return alert("Please choose one or more files.");
+      if (!token) return alert("You're not logged in.");
+
+      const decoded = decodeJwt(token);
+      console.log("[Upload] Using token_use:", decoded.token_use);
+      if (decoded.token_use !== "id") {
+        alert("Invalid token type. Please log in again.");
+        return;
+      }
+
+      urlDisplay.innerHTML = "";
+
+      for (const file of files) {
+        const status = document.createElement("p");
+        status.textContent = "Uploading " + file.name + "...";
+        urlDisplay.appendChild(status);
+
+        try {
+          console.log("[Upload] Requesting upload URL for", file.name);
+
+          const query = new URLSearchParams({
+            filename: file.name,
+            content_type: file.type,
+            filesize: file.size.toString()
+          });
+
+          const response = await fetch(API_URL + "?" + query.toString(), {
+            method: 'GET',
+            headers: {
+              "Authorization": "Bearer " + token
+            }
+          });
+
+          // NEW: handle expired/invalid token
+          if (response.status === 401) {
+            localStorage.removeItem("id_token"); // prevent redirect loop
+            const loginUrl = `${COGNITO_DOMAIN}/login?response_type=token&client_id=${CLIENT_ID}&redirect_uri=${encodeURIComponent(REDIRECT_URI)}&scope=openid+email+profile`;
+            window.location.href = loginUrl;
+            return;
+          }
+
+          if (!response.ok) {
+            const errorText = await response.text();
+            console.error("[Upload] Failed to get upload URL for", file.name, response.status, errorText);
+            status.textContent = "❌ Failed to get upload URL for " + file.name;
+            status.classList.add("error");
+            continue;
+          }
+
+          const data = await response.json();
+          console.log("[Upload] Got presigned URL for", file.name, data.upload_url);
+
+          const uploadRes = await fetch(data.upload_url, {
+            method: 'PUT',
+            headers: {
+              "Content-Type": file.type // ✅ This fixes the presigned upload issue!
+            },
+            body: file
+          });
+
+          if (uploadRes.ok) {
+            const cleanUrl = data.upload_url.split("?")[0];
+            console.log("[Upload] Upload success ✅", file.name, cleanUrl);
+            status.innerHTML = "✅ <strong>" + file.name + ":</strong> <a href=\"" + cleanUrl + "\" target=\"_blank\">" + cleanUrl + "</a>";
+            status.classList.add("success");
+          } else {
+            console.error("[Upload] PUT failed for", file.name, uploadRes.status);
+            status.textContent = "❌ Upload failed for " + file.name;
+            status.classList.add("error");
+          }
+        } catch (err) {
+          console.error("[Upload] Exception during upload for", file.name, err);
+          status.textContent = "❌ Error uploading " + file.name + ": " + err.message;
+          status.classList.add("error");
+        }
+      }
     });
   </script>
 </body>
