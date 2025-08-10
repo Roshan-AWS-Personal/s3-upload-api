@@ -39,7 +39,7 @@
   </table>
 
   <script>
-    const API_URL = "${API_URL}";
+    const API_URL = "/files";
     const COGNITO_DOMAIN = "${COGNITO_DOMAIN}";
     const CLIENT_ID = "${CLIENT_ID}";
     const REDIRECT_URI = "${REDIRECT_URI}";
