@@ -27,12 +27,11 @@ resource "aws_cloudfront_origin_request_policy" "s3_safe" {
   name = "s3-safe-policy"
 
   cookies_config { cookie_behavior = "none" }
-
   headers_config { header_behavior = "none" }
-
   query_strings_config { query_string_behavior = "none" }
 }
 
+# Forward only the headers the API needs (incl. Authorization)
 resource "aws_cloudfront_origin_request_policy" "api_auth_headers" {
   name = "api-auth-headers-policy"
 
@@ -65,11 +64,11 @@ resource "aws_cloudfront_distribution" "frontend" {
 
   # API Gateway origin (host-only; stage via origin_path)
   origin {
-    domain_name = "${aws_api_gateway_rest_api.api.id}.execute-api.${data.aws_region.current.name}.amazonaws.com"
+    domain_name = "${aws_api_gateway_rest_api.upload_api.id}.execute-api.${data.aws_region.current.name}.amazonaws.com"
     origin_id   = "api-gateway-origin"
 
-    # Example: "/dev" or "/prod" depending on your stage
-    origin_path = "/${aws_api_gateway_stage.api.stage_name}"
+    # e.g. "/dev" or "/prod" — from your aws_api_gateway_stage.stage
+    origin_path = "/${aws_api_gateway_stage.stage.stage_name}"
 
     custom_origin_config {
       http_port              = 80
@@ -91,7 +90,7 @@ resource "aws_cloudfront_distribution" "frontend" {
     origin_request_policy_id = aws_cloudfront_origin_request_policy.s3_safe.id
   }
 
-  # Route /upload to API (no cache, forward auth)
+  # Route /upload -> API (no cache, forward auth)
   ordered_cache_behavior {
     path_pattern            = "/upload"
     target_origin_id        = "api-gateway-origin"
@@ -104,7 +103,7 @@ resource "aws_cloudfront_distribution" "frontend" {
     origin_request_policy_id = aws_cloudfront_origin_request_policy.api_auth_headers.id
   }
 
-  # Route /files to API (no cache, forward auth)
+  # Route /files -> API (no cache, forward auth)
   ordered_cache_behavior {
     path_pattern            = "/files"
     target_origin_id        = "api-gateway-origin"
@@ -118,9 +117,7 @@ resource "aws_cloudfront_distribution" "frontend" {
   }
 
   restrictions {
-    geo_restriction {
-      restriction_type = "none"
-    }
+    geo_restriction { restriction_type = "none" }
   }
 
   viewer_certificate {
