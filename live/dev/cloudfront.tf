@@ -31,24 +31,9 @@ resource "aws_cloudfront_origin_request_policy" "s3_safe" {
   query_strings_config { query_string_behavior = "none" }
 }
 
-# Forward only the headers the API needs (incl. Authorization)
-resource "aws_cloudfront_origin_request_policy" "api_auth_headers" {
-  name = "api-auth-headers-policy"
-
-  cookies_config { cookie_behavior = "none" }
-
-  headers_config {
-    header_behavior = "whitelist"
-    headers {
-      items = [
-        "Authorization",
-        "Content-Type",
-        "Origin"
-      ]
-    }
-  }
-
-  query_strings_config { query_string_behavior = "none" }
+# ✅ Use AWS managed policy to forward all viewer headers except Host (includes Authorization)
+data "aws_cloudfront_origin_request_policy" "all_viewer_except_host" {
+  name = "Managed-AllViewerExceptHostHeader"
 }
 
 resource "aws_cloudfront_distribution" "frontend" {
@@ -90,7 +75,7 @@ resource "aws_cloudfront_distribution" "frontend" {
     origin_request_policy_id = aws_cloudfront_origin_request_policy.s3_safe.id
   }
 
-  # Route /upload -> API (no cache, forward auth)
+  # Route /upload -> API (no cache, forward auth/etc via managed policy)
   ordered_cache_behavior {
     path_pattern            = "/upload"
     target_origin_id        = "api-gateway-origin"
@@ -100,10 +85,10 @@ resource "aws_cloudfront_distribution" "frontend" {
     compress                = true
 
     cache_policy_id          = data.aws_cloudfront_cache_policy.disabled.id
-    origin_request_policy_id = aws_cloudfront_origin_request_policy.api_auth_headers.id
+    origin_request_policy_id = data.aws_cloudfront_origin_request_policy.all_viewer_except_host.id
   }
 
-  # Route /files -> API (no cache, forward auth)
+  # Route /files -> API (no cache, forward auth/etc via managed policy)
   ordered_cache_behavior {
     path_pattern            = "/files"
     target_origin_id        = "api-gateway-origin"
@@ -113,7 +98,7 @@ resource "aws_cloudfront_distribution" "frontend" {
     compress                = true
 
     cache_policy_id          = data.aws_cloudfront_cache_policy.disabled.id
-    origin_request_policy_id = aws_cloudfront_origin_request_policy.api_auth_headers.id
+    origin_request_policy_id = data.aws_cloudfront_origin_request_policy.all_viewer_except_host.id
   }
 
   restrictions {
