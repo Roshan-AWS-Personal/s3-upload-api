@@ -120,3 +120,14 @@ jobs:
         if: ${{ github.event.inputs.confirm_apply == 'true' }}
         working-directory: ${{ steps.env.outputs.WORK_DIR }}
         run: terraform apply -auto-approve tfplan
+        
+      - name: Invalidate CloudFront (index.html)
+        if: ${{ github.event.inputs.confirm_apply == 'true' }}
+        run: |
+          if [[ "${{ github.event.inputs.environment }}" == "dev" ]]; then
+            DIST_ID="${{ secrets.CF_DIST_ID_DEV }}"
+          else
+            DIST_ID="${{ secrets.CF_DIST_ID_PROD }}"
+          fi
+          aws cloudfront create-invalidation --distribution-id "$DIST_ID" --paths "/index.html" "/"
+

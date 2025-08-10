@@ -36,7 +36,7 @@
   </div>
 
   <script>
-    const API_URL = "${API_URL}";
+    const API_URL = "/upload";
     const COGNITO_DOMAIN = "${COGNITO_DOMAIN}";
     const CLIENT_ID = "${CLIENT_ID}";
     const REDIRECT_URI = "${REDIRECT_URI}";
@@ -185,6 +185,14 @@
               "Authorization": "Bearer " + token
             }
           });
+
+          // NEW: handle expired/invalid token
+          if (response.status === 401) {
+            localStorage.removeItem("id_token"); // prevent redirect loop
+            const loginUrl = `${COGNITO_DOMAIN}/login?response_type=token&client_id=${CLIENT_ID}&redirect_uri=$${encodeURIComponent(REDIRECT_URI)}&scope=openid+email+profile`;
+            window.location.href = loginUrl;
+            return;
+          }
 
           if (!response.ok) {
             const errorText = await response.text();

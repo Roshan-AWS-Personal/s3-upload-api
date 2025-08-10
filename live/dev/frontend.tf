@@ -59,6 +59,7 @@ resource "aws_s3_object" "index_html" {
   key          = "index.html"
   content      = data.template_file.index_html.rendered
   content_type = "text/html"
+  cache_control = "no-store, must-revalidate" # ← add this line
 }
 
 resource "aws_s3_object" "list_html" {
