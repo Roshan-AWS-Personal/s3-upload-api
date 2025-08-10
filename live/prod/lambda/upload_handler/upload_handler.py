@@ -113,9 +113,6 @@ def lambda_handler(event, context):
         }
         table.put_item(Item=item)
 
-        # send SES email (unchanged) ...
-
-        # ←—— THIS RETURN NOW INCLUDES *ALL* CORS HEADERS ———→
         return {
             "statusCode": 200,
             "body": json.dumps({

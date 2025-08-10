@@ -14,7 +14,10 @@ table       = dynamodb.Table('file_upload_metadata')
 
 MAX_FILE_SIZE       = 5 * 1024 * 1024
 ALLOWED_IMAGE_TYPES = {"jpeg", "jpg", "png"}
-recipient_email     = "venkatesanroshan@gmail.com"
+# --- SES config (add) ---
+SENDER_EMAIL      = os.environ.get("SENDER_EMAIL", "venkatesanroshan@gmail.com")  # must be SES-verified
+NOTIFY_RECIPIENTS = os.environ.get("NOTIFY_RECIPIENTS", SENDER_EMAIL)    # comma-separated allowed
+
 
 IMAGE_EXTENSIONS    = {"jpg", "jpeg", "png", "gif"}
 DOCUMENT_EXTENSIONS = {"pdf", "doc", "docx", "txt"}
@@ -113,7 +116,8 @@ def lambda_handler(event, context):
         }
         table.put_item(Item=item)
 
-        # send SES email (unchanged) ...
+        # send SES email (re-added)
+        send_upload_notification(item)
 
         # ←—— THIS RETURN NOW INCLUDES *ALL* CORS HEADERS ———→
         return {
@@ -133,3 +137,53 @@ def lambda_handler(event, context):
     except Exception as e:
         logger.exception("Error generating presigned URL")
         return response(500, f"Internal server error: {str(e)}")
+
+def send_upload_notification(item: dict):
+    """Fire-and-forget SES email about a newly issued presigned upload."""
+    try:
+        to_addresses = [addr.strip() for addr in NOTIFY_RECIPIENTS.split(",") if addr.strip()]
+        subject = f"[Upload Requested] {item.get('filename','')} ({item.get('filesize',0)} bytes)"
+
+        body_text = (
+            f"An upload was requested.\n\n"
+            f"Filename: {item.get('filename')}\n"
+            f"Size: {item.get('filesize')} bytes\n"
+            f"Content-Type: {item.get('content_type')}\n"
+            f"Bucket/Key: {item.get('s3_bucket')}/{item.get('s3_key')}\n"
+            f"Upload ID: {item.get('upload_id')}\n"
+            f"User: {item.get('username')} <{item.get('user_email')}>\n"
+            f"IP: {item.get('uploader_ip')}\n"
+            f"User-Agent: {item.get('uploader_agent')}\n"
+            f"Time (UTC): {item.get('timestamp')}\n"
+        )
+
+        body_html = f"""<html><body>
+            <h3>Upload Requested</h3>
+            <ul>
+              <li><strong>Filename</strong>: {item.get('filename')}</li>
+              <li><strong>Size</strong>: {item.get('filesize')} bytes</li>
+              <li><strong>Content-Type</strong>: {item.get('content_type')}</li>
+              <li><strong>Bucket/Key</strong>: {item.get('s3_bucket')}/{item.get('s3_key')}</li>
+              <li><strong>Upload ID</strong>: {item.get('upload_id')}</li>
+              <li><strong>User</strong>: {item.get('username')} &lt;{item.get('user_email')}&gt;</li>
+              <li><strong>IP</strong>: {item.get('uploader_ip')}</li>
+              <li><strong>User-Agent</strong>: {item.get('uploader_agent')}</li>
+              <li><strong>Time (UTC)</strong>: {item.get('timestamp')}</li>
+            </ul>
+        </body></html>"""
+
+        ses.send_email(
+            Source=SENDER_EMAIL,
+            Destination={"ToAddresses": to_addresses},
+            Message={
+                "Subject": {"Data": subject, "Charset": "UTF-8"},
+                "Body": {
+                    "Text": {"Data": body_text, "Charset": "UTF-8"},
+                    "Html": {"Data": body_html, "Charset": "UTF-8"}
+                }
+            }
+        )
+        logger.info("SES notification sent to %s", to_addresses)
+    except Exception as e:
+        # Do not fail the API if email fails; just log it.
+        logger.warning("SES notification failed: %s", e, exc_info=True)    
