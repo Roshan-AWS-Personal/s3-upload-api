@@ -41,21 +41,38 @@ jobs:
       DYNAMODB_TABLE:     ${{ secrets.DYNAMODB_TABLE }}
       STATE_PREFIX:       ${{ secrets.STATE_PREFIX }}
 
+      # OIDC role ARNs (store as repo/environment secrets)
+      ROLE_ARN_DEV:  ${{ secrets.ROLE_ARN_DEV }}
+      ROLE_ARN_PROD: ${{ secrets.ROLE_ARN_PROD }}
+
     steps:
       - name: Checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
-      - name: Select AWS credentials and bucket
+      - name: Select role & state bucket for env
+        id: select
         run: |
           if [[ "${{ github.event.inputs.environment }}" == "dev" ]]; then
-            echo "AWS_ACCESS_KEY_ID=${{ env.AWS_ACCESS_KEY_ID_DEV }}" >> $GITHUB_ENV
-            echo "AWS_SECRET_ACCESS_KEY=${{ env.AWS_SECRET_ACCESS_KEY_DEV }}" >> $GITHUB_ENV
+            echo "ROLE_TO_ASSUME=${{ env.ROLE_ARN_DEV }}"   >> $GITHUB_ENV
             echo "STATE_BUCKET=${{ env.STATE_BUCKET_DEV }}" >> $GITHUB_ENV
           else
-            echo "AWS_ACCESS_KEY_ID=${{ env.AWS_ACCESS_KEY_ID_PROD }}" >> $GITHUB_ENV
-            echo "AWS_SECRET_ACCESS_KEY=${{ env.AWS_SECRET_ACCESS_KEY_PROD }}" >> $GITHUB_ENV
+            echo "ROLE_TO_ASSUME=${{ env.ROLE_ARN_PROD }}"  >> $GITHUB_ENV
             echo "STATE_BUCKET=${{ env.STATE_BUCKET_PROD }}" >> $GITHUB_ENV
           fi
+          echo "WORK_DIR=live/${{ github.event.inputs.environment }}" >> $GITHUB_OUTPUT
+      
+      - name: Debug context
+        run: |
+          echo "repo=${{ github.repository }}"
+          echo "ref=${{ github.ref }}"
+          echo "computed_sub=repo:${{ github.repository }}:ref:${{ github.ref }}"
+
+      - name: Configure AWS credentials (OIDC)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ env.ROLE_TO_ASSUME }}
+          aws-region: ${{ env.AWS_REGION }}
+          role-session-name: tf-${{ github.run_id }}
 
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v2

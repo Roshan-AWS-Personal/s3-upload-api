@@ -1,12 +1,24 @@
 terraform {
   required_providers {
-    aws = {
-      source  = "hashicorp/aws"
-      version = "~> 5.35" # or 5.30, 5.27, etc.
-    }
+    aws = { source = "hashicorp/aws" }
+    docker = { source = "kreuzwerker/docker" }
   }
+}
 
-  required_version = ">= 1.5.0"
+provider "aws" {}
+
+data "aws_ecr_authorization_token" "ecr" {}
+
+locals {
+  ecr_address = replace(data.aws_ecr_authorization_token.ecr.proxy_endpoint, "https://", "")
+}
+
+provider "docker" {
+  registry_auth {
+    address  = local.ecr_address
+    username = data.aws_ecr_authorization_token.ecr.user_name
+    password = data.aws_ecr_authorization_token.ecr.password
+  }
 }
 resource "aws_s3_bucket" "image_upload_bucket" {
   bucket = "s3-image-upload-api-2712"
@@ -55,5 +67,47 @@ resource "aws_s3_bucket_versioning" "upload_bucket_versioning" {
   versioning_configuration {
     status = "Enabled"
   }
+}
+
+data "aws_iam_policy_document" "s3_to_sqs" {
+  statement {
+    effect = "Allow"
+
+    principals {
+      type        = "Service"
+      identifiers = ["s3.amazonaws.com"]
+    }
+
+    actions   = ["sqs:SendMessage"]
+    resources = [aws_sqs_queue.ingest_queue.arn]
+
+    condition {
+      test     = "ArnEquals"
+      variable = "aws:SourceArn"
+      values   = [aws_s3_bucket.documents_bucket.arn]
+    }
+  }
+}
+
+resource "aws_sqs_queue_policy" "allow_s3" {
+  queue_url = aws_sqs_queue.ingest_queue.id
+  policy    = data.aws_iam_policy_document.s3_to_sqs.json
+}
+
+# main.tf
+resource "aws_s3_bucket_notification" "docs_to_sqs" {
+  bucket = aws_s3_bucket.documents_bucket.id
+
+  queue {
+    queue_arn = aws_sqs_queue.ingest_queue.arn
+    events    = ["s3:ObjectCreated:*"]
+
+    # # Omit when empty (null means "don’t send the field")
+    # filter_prefix = var.s3_prefix != "" ? var.s3_prefix : null
+    # filter_suffix = var.s3_suffix != "" ? var.s3_suffix : null
+  }
+
+  # Ensure the queue policy exists before S3 registers the notification
+  depends_on = [aws_sqs_queue_policy.allow_s3]
 }
 
