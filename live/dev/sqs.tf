@@ -27,12 +27,6 @@ resource "aws_iam_policy" "ingest_runtime_perms" {
   policy = data.aws_iam_policy_document.ingest_runtime_perms.json
 }
 
-# Only attach when you provide a role name
-data "aws_iam_role" "ingest_exec" {
-  count = data.aws_iam_role.ingest_exec.name == null ? 0 : 1
-  name  = data.aws_iam_role.ingest_exec.name
-}
-
 resource "aws_iam_role_policy_attachment" "attach_ingest_runtime_perms" {
   count      = data.aws_iam_role.ingest_exec.name == null ? 0 : 1
   role       = data.aws_iam_role.ingest_exec[0].name
