@@ -548,15 +548,15 @@ resource "aws_iam_role_policy" "query_runtime" {
 # }
 
 # Quick public URL (for dev). Secure with IAM/JWT later.
-resource "aws_lambda_function_url" "query_url" {
-  function_name      = aws_lambda_function.query.arn
-  authorization_type = "NONE"
-  cors {
-    allow_origins = ["*"]
-    allow_methods = ["GET", "POST"]
-    allow_headers = ["*"]
-  }
-}
+# resource "aws_lambda_function_url" "query_url" {
+#   function_name      = aws_lambda_function.query.arn
+#   authorization_type = "NONE"
+#   cors {
+#     allow_origins = ["*"]
+#     allow_methods = ["GET", "POST"]
+#     allow_headers = ["*"]
+#   }
+# }
 
 ############################################
 # Outputs
