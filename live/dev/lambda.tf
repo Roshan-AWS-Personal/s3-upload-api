@@ -494,58 +494,58 @@ resource "aws_iam_role_policy" "query_runtime" {
 # We reference the **digest** so any image rebuild triggers an update automatically.
 # image_uri format: <repo-url>@<sha256-digest>
 
-resource "aws_lambda_function" "ingest" {
-  function_name = "${local.name}-ingest"
-  role          = aws_iam_role.ingest_exec.arn
-  package_type  = "Image"
+# resource "aws_lambda_function" "ingest" {
+#   function_name = "${local.name}-ingest"
+#   role          = aws_iam_role.ingest_exec.arn
+#   package_type  = "Image"
 
-  # Digest from pushed image
-  image_uri = "${aws_ecr_repository.ingest_repo.repository_url}@${docker_registry_image.ingest.sha256_digest}"
+#   # Digest from pushed image
+#   image_uri = "${aws_ecr_repository.ingest_repo.repository_url}@${docker_registry_image.ingest.sha256_digest}"
 
-  timeout       = 300
-  memory_size   = 1024
-  architectures = ["x86_64"]
+#   timeout       = 300
+#   memory_size   = 1024
+#   architectures = ["x86_64"]
 
-  environment {
-    variables = {
-      S3_BUCKET      = aws_s3_bucket.documents_bucket.bucket
-      DOCS_PREFIX    = "docs/"
-      INDEX_PREFIX   = "indexes/latest/"
-      BEDROCK_REGION = var.aws_region
-      EMBED_MODEL_ID = "amazon.titan-embed-text-v2:0"
-      EMBED_DIM      = "1024"
-    }
-  }
+#   environment {
+#     variables = {
+#       S3_BUCKET      = aws_s3_bucket.documents_bucket.bucket
+#       DOCS_PREFIX    = "docs/"
+#       INDEX_PREFIX   = "indexes/latest/"
+#       BEDROCK_REGION = var.aws_region
+#       EMBED_MODEL_ID = "amazon.titan-embed-text-v2:0"
+#       EMBED_DIM      = "1024"
+#     }
+#   }
 
-  depends_on = [docker_registry_image.ingest]
-}
+#   depends_on = [docker_registry_image.ingest]
+# }
 
-resource "aws_lambda_function" "query" {
-  function_name = "${local.name}-query"
-  role          = aws_iam_role.query_exec.arn
-  package_type  = "Image"
+# resource "aws_lambda_function" "query" {
+#   function_name = "${local.name}-query"
+#   role          = aws_iam_role.query_exec.arn
+#   package_type  = "Image"
 
-  image_uri = "${aws_ecr_repository.query_repo.repository_url}@${docker_registry_image.query.sha256_digest}"
+#   image_uri = "${aws_ecr_repository.query_repo.repository_url}@${docker_registry_image.query.sha256_digest}"
 
-  timeout       = 60
-  memory_size   = 2048
-  architectures = ["x86_64"]
+#   timeout       = 60
+#   memory_size   = 2048
+#   architectures = ["x86_64"]
 
-  ephemeral_storage { size = 4096 } # room for FAISS files in /tmp
+#   ephemeral_storage { size = 4096 } # room for FAISS files in /tmp
 
-  environment {
-    variables = {
-      S3_BUCKET      = aws_s3_bucket.documents_bucket.bucket
-      INDEX_PREFIX   = "indexes/latest/"
-      BEDROCK_REGION = var.aws_region
-      EMBED_MODEL_ID = "amazon.titan-embed-text-v2:0"
-      EMBED_DIM      = "1024"
-      TOP_K          = "5"
-    }
-  }
+#   environment {
+#     variables = {
+#       S3_BUCKET      = aws_s3_bucket.documents_bucket.bucket
+#       INDEX_PREFIX   = "indexes/latest/"
+#       BEDROCK_REGION = var.aws_region
+#       EMBED_MODEL_ID = "amazon.titan-embed-text-v2:0"
+#       EMBED_DIM      = "1024"
+#       TOP_K          = "5"
+#     }
+#   }
 
-  depends_on = [docker_registry_image.query]
-}
+#   depends_on = [docker_registry_image.query]
+# }
 
 # Quick public URL (for dev). Secure with IAM/JWT later.
 resource "aws_lambda_function_url" "query_url" {
