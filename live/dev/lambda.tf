@@ -511,7 +511,7 @@ resource "aws_lambda_function" "ingest" {
       S3_BUCKET      = aws_s3_bucket.documents_bucket.bucket
       DOCS_PREFIX    = "docs/"
       INDEX_PREFIX   = "indexes/latest/"
-      BEDROCK_REGION = data.aws_region.current.name
+      BEDROCK_REGION = var.aws_region
       EMBED_MODEL_ID = "amazon.titan-embed-text-v2:0"
       EMBED_DIM      = "1024"
     }
@@ -537,7 +537,7 @@ resource "aws_lambda_function" "query" {
     variables = {
       S3_BUCKET      = aws_s3_bucket.documents_bucket.bucket
       INDEX_PREFIX   = "indexes/latest/"
-      BEDROCK_REGION = data.aws_region.current.name
+      BEDROCK_REGION = var.aws_region
       EMBED_MODEL_ID = "amazon.titan-embed-text-v2:0"
       EMBED_DIM      = "1024"
       TOP_K          = "5"
