@@ -22,10 +22,6 @@ resource "aws_lambda_event_source_mapping" "sqs_to_ingest" {
   function_response_types                 = ["ReportBatchItemFailures"]
 }
 
-data "aws_iam_policy" "ingest_runtime_perms" {
-  arn = "arn:aws:iam::${data.aws_caller_identity.current.account_id}:policy/${local.name}-ingest-runtime-perms"
-}
-
 resource "aws_iam_role_policy_attachment" "attach_ingest_runtime_perms" {
   count      = data.aws_iam_role.ingest_exec.name == null ? 0 : 1
   role       = data.aws_iam_role.ingest_exec[0].name
