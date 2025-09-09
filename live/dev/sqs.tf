@@ -24,6 +24,6 @@ resource "aws_lambda_event_source_mapping" "sqs_to_ingest" {
 
 resource "aws_iam_role_policy_attachment" "attach_ingest_runtime_perms" {
   count      = data.aws_iam_role.ingest_exec.name == null ? 0 : 1
-  role       = data.aws_iam_role.ingest_exec[0].name
+  role       = data.aws_iam_role.ingest_exec.name
   policy_arn = data.aws_iam_policy.ingest_runtime_perms.arn
 }
