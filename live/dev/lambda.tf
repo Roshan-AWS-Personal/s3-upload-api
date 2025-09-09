@@ -33,6 +33,30 @@ resource "aws_iam_role" "s3_event_lambda_role" {
   })
 }
 
+# --- IAM roles (existing) ---
+data "aws_iam_role" "ingest_exec" {
+  name = "${local.name}-ingest-exec"
+}
+
+data "aws_iam_role" "query_exec" {
+  name = "${local.name}-query-exec"
+}
+
+# --- IAM policy (existing customer-managed) ---
+# If this policy is already created by the other stack, reference it by ARN:
+data "aws_iam_policy" "ingest_runtime_perms" {
+  arn = "arn:aws:iam::${data.aws_caller_identity.current.account_id}:policy/${local.name}-ingest-runtime-perms"
+}
+
+# --- ECR repositories (existing) ---
+data "aws_ecr_repository" "ingest_repo" {
+  name = "${local.name}-ingest"
+}
+
+data "aws_ecr_repository" "query_repo" {
+  name = "${local.name}-query"
+}
+
 resource "aws_iam_policy_attachment" "s3_event_lambda_logs" {
   name       = "attach-s3-event-logs"
   roles      = [aws_iam_role.s3_event_lambda_role.name]
@@ -334,29 +358,12 @@ resource "aws_iam_role" "list_uploads_exec_role" {
 
 
 ############################################
-# ECR repositories (one per lambda)
-############################################
-resource "aws_ecr_repository" "ingest_repo" {
-  name                 = "${local.name}-ingest"
-  image_tag_mutability = "MUTABLE"
-  image_scanning_configuration { scan_on_push = true }
-  force_delete = true
-}
-
-resource "aws_ecr_repository" "query_repo" {
-  name                 = "${local.name}-query"
-  image_tag_mutability = "MUTABLE"
-  image_scanning_configuration { scan_on_push = true }
-  force_delete = true
-}
-
-############################################
 # Build & push images with Terraform
 ############################################
 # INGEST
 # In docker_image blocks
 resource "docker_image" "ingest" {
-  name = "${aws_ecr_repository.ingest_repo.repository_url}:latest"
+  name = "${data.aws_ecr_repository.ingest_repo.repository_url}:latest"
   build {
     context    = "${path.root}/lambda/ingest"
     dockerfile = "Dockerfile"
@@ -364,7 +371,7 @@ resource "docker_image" "ingest" {
     build_args = { BUILD_ID = local.ingest_build_id }
   }
   keep_locally = true
-  depends_on   = [aws_ecr_repository.ingest_repo]
+  depends_on   = [data.aws_ecr_repository.ingest_repo]
 }
 
 resource "docker_registry_image" "ingest" {
@@ -375,7 +382,7 @@ resource "docker_registry_image" "ingest" {
 # QUERY
 
 resource "docker_image" "query" {
-  name = "${aws_ecr_repository.query_repo.repository_url}:latest"
+  name = "${data.aws_ecr_repository.query_repo.repository_url}:latest"
   build {
     context    = "${path.root}/lambda/query"
     dockerfile = "Dockerfile"
@@ -383,7 +390,7 @@ resource "docker_image" "query" {
     build_args = { BUILD_ID = local.query_build_id }
   }
   keep_locally = true
-  depends_on   = [aws_ecr_repository.query_repo]
+  depends_on   = [data.aws_ecr_repository.query_repo]
 }
 
 resource "docker_registry_image" "query" {
@@ -394,26 +401,15 @@ resource "docker_registry_image" "query" {
 ############################################
 # IAM: Ingest Lambda
 ############################################
-resource "aws_iam_role" "ingest_exec" {
-  name = "${local.name}-ingest-exec"
-  assume_role_policy = jsonencode({
-    Version = "2012-10-17",
-    Statement = [{
-      Effect    = "Allow",
-      Action    = "sts:AssumeRole",
-      Principal = { Service = "lambda.amazonaws.com" }
-    }]
-  })
-}
 
 resource "aws_iam_role_policy_attachment" "ingest_logs" {
-  role       = aws_iam_role.ingest_exec.name
+  role       = data.aws_iam_role.ingest_exec.name
   policy_arn = "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
 }
 
 resource "aws_iam_role_policy" "ingest_runtime" {
   name = "${local.name}-ingest-runtime"
-  role = aws_iam_role.ingest_exec.id
+  role = data.aws_iam_role.ingest_exec.id
   policy = jsonencode({
     Version = "2012-10-17",
     Statement = [
@@ -496,11 +492,11 @@ resource "aws_iam_role_policy" "query_runtime" {
 
 resource "aws_lambda_function" "ingest" {
   function_name = "${local.name}-ingest"
-  role          = aws_iam_role.ingest_exec.arn
+  role          = data.aws_iam_role.ingest_exec.arn
   package_type  = "Image"
 
   # Digest from pushed image
-  image_uri = "${aws_ecr_repository.ingest_repo.repository_url}@${docker_registry_image.ingest.sha256_digest}"
+  image_uri = "${data.aws_ecr_repository.ingest_repo.repository_url}@${docker_registry_image.ingest.sha256_digest}"
 
   timeout       = 300
   memory_size   = 1024
@@ -525,7 +521,7 @@ resource "aws_lambda_function" "query" {
   role          = aws_iam_role.query_exec.arn
   package_type  = "Image"
 
-  image_uri = "${aws_ecr_repository.query_repo.repository_url}@${docker_registry_image.query.sha256_digest}"
+  image_uri = "${data.aws_ecr_repository.query_repo.repository_url}@${docker_registry_image.query.sha256_digest}"
 
   timeout       = 60
   memory_size   = 2048
@@ -562,12 +558,12 @@ resource "aws_lambda_function_url" "query_url" {
 # Outputs
 ############################################
 output "ingest_repo_url" {
-  value       = aws_ecr_repository.ingest_repo.repository_url
+  value       = data.aws_ecr_repository.ingest_repo.repository_url
   description = "ECR repo for ingest image"
 }
 
 output "query_repo_url" {
-  value       = aws_ecr_repository.query_repo.repository_url
+  value       = data.aws_ecr_repository.query_repo.repository_url
   description = "ECR repo for query image"
 }
 
