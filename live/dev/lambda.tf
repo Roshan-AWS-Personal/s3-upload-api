@@ -421,20 +421,20 @@ resource "aws_iam_role_policy" "ingest_runtime" {
         Sid      = "DocsReadList",
         Effect   = "Allow",
         Action   = ["s3:ListBucket"],
-        Resource = [aws_s3_bucket.rag_documents_bucket.arn],
+        Resource = [aws_s3_bucket.documents_bucket.arn],
         Condition = { StringLike = { "s3:prefix" = ["docs/*", "docs/"] } }
       },
       {
         Sid      = "DocsReadObjects",
         Effect   = "Allow",
         Action   = ["s3:GetObject"],
-        Resource = ["${aws_s3_bucket.rag_documents_bucket.arn}/docs/*"]
+        Resource = ["${aws_s3_bucket.documents_bucket.arn}/docs/*"]
       },
       {
         Sid      = "IndexWrite",
         Effect   = "Allow",
         Action   = ["s3:PutObject", "s3:DeleteObject", "s3:GetObject", "s3:HeadObject"],
-        Resource = ["${aws_s3_bucket.rag_documents_bucket.arn}/indexes/*"]
+        Resource = ["${aws_s3_bucket.documents_bucket.arn}/indexes/*"]
       },
       {
         Sid      = "BedrockInvoke",
@@ -476,7 +476,7 @@ resource "aws_iam_role_policy" "query_runtime" {
         Sid      = "IndexRead",
         Effect   = "Allow",
         Action   = ["s3:GetObject", "s3:HeadObject"],
-        Resource = ["${aws_s3_bucket.rag_documents_bucket.arn}/indexes/*"]
+        Resource = ["${aws_s3_bucket.documents_bucket.arn}/indexes/*"]
       },
       {
         Sid      = "BedrockInvoke",
@@ -508,7 +508,7 @@ resource "aws_lambda_function" "ingest" {
 
   environment {
     variables = {
-      S3_BUCKET      = aws_s3_bucket.rag_documents_bucket.bucket
+      S3_BUCKET      = aws_s3_bucket.documents_bucket.bucket
       DOCS_PREFIX    = "docs/"
       INDEX_PREFIX   = "indexes/latest/"
       BEDROCK_REGION = data.aws_region.current.name
@@ -535,7 +535,7 @@ resource "aws_lambda_function" "query" {
 
   environment {
     variables = {
-      S3_BUCKET      = aws_s3_bucket.rag_documents_bucket.bucket
+      S3_BUCKET      = aws_s3_bucket.documents_bucket.bucket
       INDEX_PREFIX   = "indexes/latest/"
       BEDROCK_REGION = data.aws_region.current.name
       EMBED_MODEL_ID = "amazon.titan-embed-text-v2:0"
