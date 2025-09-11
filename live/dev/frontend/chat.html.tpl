@@ -86,7 +86,7 @@
           grant_type: "authorization_code",
           client_id: cfg.clientId,
           redirect_uri: cfg.redirectUri,
-          code
+          code: code
         })
       });
       const text = await res.text();
@@ -106,7 +106,8 @@
           redirect_uri: cfg.redirectUri,
           scope: "openid email profile"
         });
-        location.href = `${cfg.cognitoDomain}/login?${p}`;
+        // was: `${cfg.cognitoDomain}/login?${p}`
+        location.href = cfg.cognitoDomain + "/login?" + p.toString();
         return false;
       }
       document.getElementById("logoutBtn").style.display = "inline-block";
@@ -116,7 +117,11 @@
     document.getElementById("logoutBtn").onclick = () => {
       localStorage.removeItem("id_token");
       localStorage.removeItem("access_token");
-      location.href = `${cfg.cognitoDomain}/logout?client_id=${cfg.clientId}&logout_uri=${cfg.logoutUri || cfg.redirectUri}`;
+      // was: `${cfg.cognitoDomain}/logout?client_id=${cfg.clientId}&logout_uri=${cfg.logoutUri || cfg.redirectUri}`
+      const url = cfg.cognitoDomain
+        + "/logout?client_id=" + encodeURIComponent(cfg.clientId)
+        + "&logout_uri=" + encodeURIComponent(cfg.logoutUri || cfg.redirectUri);
+      location.href = url;
     };
 
     async function ask() {
@@ -130,9 +135,9 @@
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          "Authorization": "Bearer " + token   // same pattern as your upload API
+          "Authorization": "Bearer " + token
         },
-        body: JSON.stringify({ q, k: 8 })
+        body: JSON.stringify({ q: q, k: 8 })
       });
 
       const data = await resp.json();
@@ -145,8 +150,7 @@
           const div = document.createElement("div");
           div.className = "src";
           const title = d.title || (d.s3_uri ? d.s3_uri.split('/').pop() : "document");
-          const link = (d.s3_uri || "").replace(/^s3:\/\//, "https://s3.console.aws.amazon.com/s3/object/");
-          div.innerHTML = `${title}`;
+          div.textContent = title; // was: `${title}`
           box.appendChild(div);
         });
       }
@@ -161,5 +165,6 @@
       });
     })();
   </script>
+
 </body>
 </html>
