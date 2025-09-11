@@ -10,7 +10,12 @@
       --text:#e6edf3; --muted:#94a3b8; --accent:#06a5fa; --danger:#fe4444;
     }
     * { box-sizing: border-box; }
-    html, body { height:100%; margin:0; font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica Neue, Arial; color: var(--text); background: linear-gradient(180deg, #0b0f14 0%, #0d131b 100%); }
+    html, body {
+      height:100%; margin:0;
+      font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, "Helvetica Neue", Arial;
+      color: var(--text);
+      background: linear-gradient(180deg, #0b0f14 0%, #0d131b 100%);
+    }
     .wrap { max-width: 900px; margin: 0 auto; padding: 16px; }
     nav { margin-bottom: 12px; }
     nav a { margin-right: 12px; text-decoration: none; color: var(--accent); }
@@ -20,18 +25,18 @@
     header button { margin-left:auto; background: var(--soft); color: var(--text); border:1px solid var(--border); border-radius:10px; padding:8px 10px; font-size:12px; cursor:pointer; }
     .card { background: rgba(17,43,33,.35); border:1px solid var(--border); border-radius:12px; padding: 14px; }
     .row { display:grid; grid-template-columns: 1fr auto; gap: 10px; }
-    textarea { width:100%; min-height: 90px; resize: vertical; padding:10px; background: var(--soft); color:var(--text); border:1px solid var(--border); border-radius:10px; }
+    textarea { width:100%; min-height: 100px; resize: vertical; padding:10px; background: var(--soft); color:var(--text); border:1px solid var(--border); border-radius:10px; }
     .btn { background: var(--accent); color:#001422; border:none; padding:10px 14px; border-radius:10px; cursor:pointer; }
     .answer { white-space: pre-wrap; line-height: 1.4; }
     .sources { margin-top:10px; font-size: 13px; color: var(--muted); }
-    .src a { color: var(--accent); text-decoration: none; }
     .src { margin-top:6px; }
+    .error { color: var(--danger); }
   </style>
 
-  <!-- Terraform fills these -->
+  <!-- Terraform fills these values -->
   <script>
     window.APP_CONFIG = {
-      apiUrl: "${API_URL}",               // POST /query
+      apiUrl: "${API_URL}",
       cognitoDomain: "${COGNITO_DOMAIN}",
       clientId: "${CLIENT_ID}",
       redirectUri: "${REDIRECT_URI}",
@@ -65,21 +70,22 @@
   </div>
 
   <script>
-    const cfg = window.APP_CONFIG;
+    // Config object
+    var cfg = window.APP_CONFIG || {};
 
     function decodeJwt(token) {
       try {
-        const b = token.split('.')[1];
+        var b = token.split('.')[1];
         return JSON.parse(atob(b.replace(/-/g, '+').replace(/_/g, '/')));
-      } catch { return {}; }
+      } catch (e) { return {}; }
     }
 
     async function handleCognitoLoginRedirect() {
-      const params = new URLSearchParams(location.search);
-      const code = params.get("code");
+      var params = new URLSearchParams(location.search);
+      var code = params.get("code");
       if (!code) return;
 
-      const res = await fetch(cfg.cognitoDomain + "/oauth2/token", {
+      var res = await fetch(cfg.cognitoDomain + "/oauth2/token", {
         method: "POST",
         headers: {"Content-Type": "application/x-www-form-urlencoded"},
         body: new URLSearchParams({
@@ -89,24 +95,26 @@
           code: code
         })
       });
-      const text = await res.text();
-      let data;
-      try { data = JSON.parse(text); } catch { alert("Auth error"); return; }
 
-      if (data.id_token) localStorage.setItem("id_token", data.id_token);
+      var text = await res.text();
+      var data;
+      try { data = JSON.parse(text); } catch (e) { alert("Auth error"); return; }
+
+      if (data && data.id_token) {
+        localStorage.setItem("id_token", data.id_token);
+      }
       history.replaceState({}, document.title, cfg.redirectUri);
     }
 
     function ensureLoggedIn() {
-      const t = localStorage.getItem("id_token");
+      var t = localStorage.getItem("id_token");
       if (!t) {
-        const p = new URLSearchParams({
+        var p = new URLSearchParams({
           response_type: "code",
           client_id: cfg.clientId,
           redirect_uri: cfg.redirectUri,
           scope: "openid email profile"
         });
-        // was: `${cfg.cognitoDomain}/login?${p}`
         location.href = cfg.cognitoDomain + "/login?" + p.toString();
         return false;
       }
@@ -114,57 +122,66 @@
       return true;
     }
 
-    document.getElementById("logoutBtn").onclick = () => {
+    document.getElementById("logoutBtn").onclick = function () {
       localStorage.removeItem("id_token");
       localStorage.removeItem("access_token");
-      // was: `${cfg.cognitoDomain}/logout?client_id=${cfg.clientId}&logout_uri=${cfg.logoutUri || cfg.redirectUri}`
-      const url = cfg.cognitoDomain
+      var url = cfg.cognitoDomain
         + "/logout?client_id=" + encodeURIComponent(cfg.clientId)
         + "&logout_uri=" + encodeURIComponent(cfg.logoutUri || cfg.redirectUri);
       location.href = url;
     };
 
     async function ask() {
-      const token = localStorage.getItem("id_token");
-      const q = document.getElementById("q").value.trim();
+      var token = localStorage.getItem("id_token");
+      var q = document.getElementById("q").value.trim();
       if (!q) return;
+
       document.getElementById("answer").textContent = "Thinking…";
       document.getElementById("sources").textContent = "";
 
-      const resp = await fetch(cfg.apiUrl, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": "Bearer " + token
-        },
-        body: JSON.stringify({ q: q, k: 8 })
-      });
-
-      const data = await resp.json();
-      document.getElementById("answer").textContent = data.answer || "(no answer)";
-      const s = data.sources || [];
-      const box = document.getElementById("sources");
-      if (s.length) {
-        box.innerHTML = "<strong>Sources</strong>";
-        s.forEach(d => {
-          const div = document.createElement("div");
-          div.className = "src";
-          const title = d.title || (d.s3_uri ? d.s3_uri.split('/').pop() : "document");
-          div.textContent = title; // was: `${title}`
-          box.appendChild(div);
+      try {
+        var resp = await fetch(cfg.apiUrl, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": "Bearer " + token
+          },
+          body: JSON.stringify({ q: q, k: 8 })
         });
+
+        var data = await resp.json();
+        document.getElementById("answer").textContent = (data && data.answer) ? data.answer : "(no answer)";
+        var s = (data && data.sources) ? data.sources : [];
+        var box = document.getElementById("sources");
+        if (s.length) {
+          var title = document.createElement("div");
+          title.innerHTML = "<strong>Sources</strong>";
+          box.appendChild(title);
+          s.forEach(function (d) {
+            var div = document.createElement("div");
+            div.className = "src";
+            var t = d.title ? d.title : (d.s3_uri ? d.s3_uri.split('/').pop() : "document");
+            div.textContent = t;
+            box.appendChild(div);
+          });
+        }
+      } catch (e) {
+        document.getElementById("answer").textContent = "Error fetching answer.";
+        var err = document.createElement("div");
+        err.className = "error";
+        err.textContent = e.message || String(e);
+        document.getElementById("sources").appendChild(err);
       }
     }
 
-    (async () => {
+    (async function () {
       await handleCognitoLoginRedirect();
       if (!ensureLoggedIn()) return;
       document.getElementById("askBtn").onclick = ask;
-      document.getElementById("q").addEventListener("keydown", e => {
+      document.getElementById("q").addEventListener("keydown", function (e) {
         if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) ask();
       });
     })();
   </script>
-
 </body>
 </html>
