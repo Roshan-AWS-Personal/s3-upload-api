@@ -22,6 +22,7 @@
   <nav>
     <a href="index.html"><strong>Upload</strong></a>
     <a href="list.html">View Files</a>
+    <a href="chat.html">Chat</a>
   </nav>
 
   <div class="container">
