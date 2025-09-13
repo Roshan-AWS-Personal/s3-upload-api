@@ -4,12 +4,10 @@
 # - HTTP API for chat
 ###############################################
 
-# REST API (uploads & list)
-# Example: "n3bcr23wm1.execute-api.ap-southeast-2.amazonaws.com"
 locals {
   # Build execute-api hostnames from the API IDs and region (no scheme)
-  upload_api_domain = "${aws_api_gateway_rest_api.image_upload_api.id}.execute-api.${var.aws_region}.amazonaws.com"
-  chat_api_domain   = "${aws_apigatewayv2_api.kb.id}.execute-api.${var.aws_region}.amazonaws.com"
+  upload_api_domain = "${aws_api_gateway_rest_api.upload_api.id}.execute-api.${var.aws_region}.amazonaws.com"
+  chat_api_domain   = "tzfwnff860.execute-api.ap-southeast-2.amazonaws.com"
 
   # Stages
   upload_api_stage = "dev"      # or use var.stage_name if you prefer; REST usually named
