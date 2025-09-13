@@ -4,12 +4,6 @@
 # - HTTP API for chat
 ###############################################
 
-# ------------ Variables ------------
-variable "env" {
-  type        = string
-  description = "Environment tag (e.g., dev/prod)"
-}
-
 # REST API (uploads & list)
 # Example: "n3bcr23wm1.execute-api.ap-southeast-2.amazonaws.com"
 variable "upload_api_execute_domain" {
