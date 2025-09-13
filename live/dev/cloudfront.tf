@@ -20,6 +20,7 @@ variable "upload_api_stage" {
 # Example: "tzfwnff860.execute-api.ap-southeast-2.amazonaws.com"
 variable "chat_api_execute_domain" {
   type        = string
+  default = "https://tzfwnff860.execute-api.ap-southeast-2.amazonaws.com"
   description = "ai-kb HTTP API execute-api domain (no scheme)"
 }
 # Example: "$default" or 'dev'
