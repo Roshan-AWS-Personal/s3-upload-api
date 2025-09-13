@@ -45,8 +45,20 @@ data "aws_cloudfront_cache_policy" "caching_disabled" {
 }
 
 # Safe for S3 (no auth/header forwarding to S3)
-data "aws_cloudfront_origin_request_policy" "s3_safe" {
-  name = "Managed-S3Origin"
+resource "aws_cloudfront_origin_request_policy" "s3_safe" {
+  name = "s3-safe-policy"
+
+  cookies_config {
+    cookie_behavior = "none"
+  }
+
+  headers_config {
+    header_behavior = "none"
+  }
+
+  query_strings_config {
+    query_string_behavior = "none"
+  }
 }
 
 # Forward almost everything (so Authorization reaches APIs)
@@ -104,7 +116,7 @@ resource "aws_cloudfront_distribution" "frontend" {
     cached_methods           = ["GET", "HEAD"]
     viewer_protocol_policy   = "redirect-to-https"
     cache_policy_id          = data.aws_cloudfront_cache_policy.caching_optimized.id
-    origin_request_policy_id = data.aws_cloudfront_origin_request_policy.s3_safe.id
+    origin_request_policy_id = aws_cloudfront_origin_request_policy.s3_safe.id
     compress                 = true
   }
 
