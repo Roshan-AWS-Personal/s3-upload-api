@@ -118,7 +118,7 @@ resource "aws_cloudfront_distribution" "frontend" {
 
   # List API (REST)
   ordered_cache_behavior {
-    path_pattern             = "/api/list*"
+    path_pattern             = "/api/files*"
     target_origin_id         = local.upload_api_origin_id
     allowed_methods          = ["GET","HEAD","OPTIONS","PUT","POST","PATCH","DELETE"]
     cached_methods           = ["GET","HEAD","OPTIONS"]

@@ -46,7 +46,7 @@ data "template_file" "chat_html" {
   template = file("${path.module}/frontend/chat.html.tpl")
 
   vars = {
-    API_URL        = "/api/chat*"
+    API_URL        = "/api/chat"
     COGNITO_DOMAIN = var.cognito_domain
     CLIENT_ID      = var.cognito_client_id
     REDIRECT_URI   = var.login_redirect_url
@@ -68,7 +68,7 @@ data "template_file" "index_html" {
 
   vars = {
     BEARER_TOKEN    = var.upload_api_secret
-    API_URL         = "/api/upload*"
+    API_URL         = "/api/upload"
     COGNITO_DOMAIN  = var.cognito_domain
     CLIENT_ID       = var.cognito_client_id
     REDIRECT_URI    = var.login_redirect_url
@@ -95,7 +95,7 @@ data "template_file" "list_html" {
   template = file("${path.module}/frontend/list.html.tpl")
 
   vars = {
-    API_URL         = "/api/list*"
+    API_URL         = "/api/list"
     COGNITO_DOMAIN  = var.cognito_domain
     CLIENT_ID       = var.cognito_client_id
     REDIRECT_URI    = var.redirect_uri_list
