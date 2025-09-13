@@ -20,6 +20,7 @@
   <nav>
     <a href="index.html">Upload</a>
     <a href="list.html"><strong>View Files</strong></a>
+    <a href="chat.html">Chat</a>
   </nav>
 
   <h1>Uploaded Files</h1>
