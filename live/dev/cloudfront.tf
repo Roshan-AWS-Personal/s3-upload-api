@@ -6,22 +6,14 @@
 
 # REST API (uploads & list)
 # Example: "n3bcr23wm1.execute-api.ap-southeast-2.amazonaws.com"
-variable "upload_api_execute_domain" {
-  type        = string
-  description = "image-upload REST API execute-api domain (no scheme)"
-}
-# Example: "prod" or "$default" (REST usually named like 'prod', 'dev')
-variable "upload_api_stage" {
-  type        = string
-  description = "image-upload REST API stage (e.g., prod/dev)"
-}
+locals {
+  # Build execute-api hostnames from the API IDs and region (no scheme)
+  upload_api_domain = "${aws_api_gateway_rest_api.image_upload_api.id}.execute-api.${var.aws_region}.amazonaws.com"
+  chat_api_domain   = "${aws_apigatewayv2_api.kb.id}.execute-api.${var.aws_region}.amazonaws.com"
 
-# HTTP API (chat)
-# Example: "tzfwnff860.execute-api.ap-southeast-2.amazonaws.com"
-variable "chat_api_execute_domain" {
-  type        = string
-  default = "https://tzfwnff860.execute-api.ap-southeast-2.amazonaws.com"
-  description = "ai-kb HTTP API execute-api domain (no scheme)"
+  # Stages
+  upload_api_stage = "dev"      # or use var.stage_name if you prefer; REST usually named
+  chat_api_stage   = "$default"  # HTTP API default stage; change if you use a named stage
 }
 # Example: "$default" or 'dev'
 variable "chat_api_stage" {
@@ -80,9 +72,9 @@ resource "aws_cloudfront_distribution" "frontend" {
 
   # REST API: uploads/list
   origin {
-    domain_name = var.upload_api_execute_domain
+    domain_name = local.upload_api_domain
     origin_id   = local.upload_api_origin_id
-    origin_path = var.upload_api_stage == "$default" ? "" : "/${var.upload_api_stage}"
+    origin_path = local.upload_api_stage == "$default" ? "" : "/${local.upload_api_stage}"
 
     custom_origin_config {
       origin_protocol_policy = "https-only"
@@ -94,9 +86,9 @@ resource "aws_cloudfront_distribution" "frontend" {
 
   # HTTP API: chat
   origin {
-    domain_name = var.chat_api_execute_domain
+    domain_name = local.chat_api_domain
     origin_id   = local.chat_api_origin_id
-    origin_path = var.chat_api_stage == "$default" ? "" : "/${var.chat_api_stage}"
+    origin_path = local.chat_api_stage == "$default" ? "" : "/${local.chat_api_stage}"
 
     custom_origin_config {
       origin_protocol_policy = "https-only"
