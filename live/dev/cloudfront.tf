@@ -4,39 +4,23 @@
 # - HTTP API for chat
 ###############################################
 
-# REST API (uploads & list)
-variable "upload_rest_api_id" {
-  type        = string
-  description = "REST API ID for uploads/list (e.g., n3bcr23wm1)"
-}
-variable "upload_rest_api_stage" {
-  type        = string
-  description = "REST API stage (e.g., dev/prod)"
-}
-
-# HTTP API (chat)
-variable "chat_http_api_id" {
-  type        = string
-  description = "HTTP API ID for chat (e.g., tzfwnff860)"
-}
-variable "chat_http_api_stage" {
-  type        = string
-  default     = "$default"
-  description = "HTTP API stage (usually $default)"
-}
-
-# ---------- Locals ----------
 locals {
-  s3_origin_id          = "s3-upload-site"
-  upload_api_origin_id  = "upload-api-origin"
-  chat_api_origin_id    = "chat-api-origin"
-
   # Build execute-api hostnames (no scheme)
-  upload_api_domain = "${var.upload_rest_api_id}.execute-api.${var.aws_region}.amazonaws.com"
-  chat_api_domain   = "${var.chat_http_api_id}.execute-api.${var.aws_region}.amazonaws.com"
+  upload_api_domain = "${aws_api_gateway_rest_api.upload_api.id}.execute-api.${var.aws_region}.amazonaws.com"
+  chat_api_domain   = "tzfwnff860.execute-api.ap-southeast-2.amazonaws.com" # <-- replace ID if your HTTP API changes
+
+  # Stages
+  upload_api_stage = var.stage_name          # e.g., "dev" or "prod" (you already have this var)
+  chat_api_stage   = "$default"              # change if you use a named stage
 }
 
-# ---------- S3 Origin Access Control ----------
+locals {
+  s3_origin_id           = "s3-upload-site"
+  upload_api_origin_id   = "upload-api-origin" # REST API
+  chat_api_origin_id     = "chat-api-origin"   # HTTP API
+}
+
+# ------------ Origin Access Control (S3) ------------
 resource "aws_cloudfront_origin_access_control" "s3_oac" {
   name                              = "upload-site-oac"
   origin_access_control_origin_type = "s3"
@@ -45,7 +29,7 @@ resource "aws_cloudfront_origin_access_control" "s3_oac" {
   description                       = "OAC for S3 frontend site"
 }
 
-# ---------- Policies ----------
+# ------------ Cache/Origin-Request Policies ------------
 data "aws_cloudfront_cache_policy" "caching_optimized" {
   name = "Managed-CachingOptimized"
 }
@@ -53,21 +37,21 @@ data "aws_cloudfront_cache_policy" "caching_disabled" {
   name = "Managed-CachingDisabled"
 }
 
-# For S3: forward nothing (DON'T forward Authorization to S3)
+# S3: forward nothing (DON'T forward Authorization to S3)
 resource "aws_cloudfront_origin_request_policy" "s3_safe" {
   name = "s3-safe-policy"
 
-  cookies_config { cookie_behavior = "none" }
-  headers_config { header_behavior = "none" }
-  query_strings_config { query_string_behavior = "none" }
+  cookies_config       { cookie_behavior        = "none" }
+  headers_config       { header_behavior        = "none" }
+  query_strings_config { query_string_behavior  = "none" }
 }
 
-# For APIs: forward everything except Host (so Authorization reaches API GW)
+# APIs: forward all viewer headers except Host (so Authorization reaches API GW)
 data "aws_cloudfront_origin_request_policy" "all_viewer_except_host" {
   name = "Managed-AllViewerExceptHostHeader"
 }
 
-# ---------- Distribution ----------
+# ------------ Distribution ------------
 resource "aws_cloudfront_distribution" "frontend" {
   enabled             = true
   default_root_object = "index.html"
@@ -85,7 +69,7 @@ resource "aws_cloudfront_distribution" "frontend" {
   origin {
     domain_name = local.upload_api_domain
     origin_id   = local.upload_api_origin_id
-    origin_path = var.upload_rest_api_stage == "$default" ? "" : "/${var.upload_rest_api_stage}"
+    origin_path = local.upload_api_stage == "$default" ? "" : "/${local.upload_api_stage}"
 
     custom_origin_config {
       origin_protocol_policy = "https-only"
@@ -99,7 +83,7 @@ resource "aws_cloudfront_distribution" "frontend" {
   origin {
     domain_name = local.chat_api_domain
     origin_id   = local.chat_api_origin_id
-    origin_path = var.chat_http_api_stage == "$default" ? "" : "/${var.chat_http_api_stage}"
+    origin_path = local.chat_api_stage == "$default" ? "" : "/${local.chat_api_stage}"
 
     custom_origin_config {
       origin_protocol_policy = "https-only"
