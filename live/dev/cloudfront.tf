@@ -4,11 +4,6 @@
 # - HTTP API for chat
 ###############################################
 
-# ---------- Inputs ----------
-# Keep these minimal: pass API *IDs* and the region. We derive execute-api hostnames.
-variable "aws_region" { type = string }
-variable "env"        { type = string }
-
 # REST API (uploads & list)
 variable "upload_rest_api_id" {
   type        = string
