@@ -1,3 +1,48 @@
+###############################################
+# CloudFront: S3 site + TWO API Gateways
+# - REST API for upload/list
+# - HTTP API for chat
+###############################################
+
+# ------------ Variables ------------
+variable "env" {
+  type        = string
+  description = "Environment tag (e.g., dev/prod)"
+}
+
+# REST API (uploads & list)
+# Example: "n3bcr23wm1.execute-api.ap-southeast-2.amazonaws.com"
+variable "upload_api_execute_domain" {
+  type        = string
+  description = "image-upload REST API execute-api domain (no scheme)"
+}
+# Example: "prod" or "$default" (REST usually named like 'prod', 'dev')
+variable "upload_api_stage" {
+  type        = string
+  description = "image-upload REST API stage (e.g., prod/dev)"
+}
+
+# HTTP API (chat)
+# Example: "tzfwnff860.execute-api.ap-southeast-2.amazonaws.com"
+variable "chat_api_execute_domain" {
+  type        = string
+  description = "ai-kb HTTP API execute-api domain (no scheme)"
+}
+# Example: "$default" or 'dev'
+variable "chat_api_stage" {
+  type        = string
+  default     = "$default"
+  description = "ai-kb HTTP API stage"
+}
+
+# ------------ Locals ------------
+locals {
+  s3_origin_id        = "s3-upload-site"
+  upload_api_origin_id = "upload-api-origin" # REST API
+  chat_api_origin_id   = "chat-api-origin"   # HTTP API
+}
+
+# ------------ Origin Access Control (S3) ------------
 resource "aws_cloudfront_origin_access_control" "s3_oac" {
   name                              = "upload-site-oac"
   origin_access_control_origin_type = "s3"
@@ -6,52 +51,114 @@ resource "aws_cloudfront_origin_access_control" "s3_oac" {
   description                       = "OAC for S3 frontend site"
 }
 
-data "aws_cloudfront_cache_policy" "optimized" {
+# ------------ Managed Policies ------------
+data "aws_cloudfront_cache_policy" "caching_optimized" {
   name = "Managed-CachingOptimized"
 }
-
-resource "aws_cloudfront_origin_request_policy" "s3_safe" {
-  name = "s3-safe-policy"
-
-  cookies_config {
-    cookie_behavior = "none"
-  }
-
-  headers_config {
-    header_behavior = "none"
-  }
-
-  query_strings_config {
-    query_string_behavior = "none"
-  }
+data "aws_cloudfront_cache_policy" "caching_disabled" {
+  name = "Managed-CachingDisabled"
 }
 
+# Safe for S3 (no auth/header forwarding to S3)
+data "aws_cloudfront_origin_request_policy" "s3_safe" {
+  name = "Managed-S3Origin"
+}
+
+# Forward almost everything (so Authorization reaches APIs)
+data "aws_cloudfront_origin_request_policy" "all_viewer_except_host" {
+  name = "Managed-AllViewerExceptHostHeader"
+}
+
+# ------------ Distribution ------------
 resource "aws_cloudfront_distribution" "frontend" {
   enabled             = true
   default_root_object = "index.html"
+  comment             = "Frontend site with multi-API routing"
 
+  # ----- Origins -----
+  # S3 static site
   origin {
-    domain_name = aws_s3_bucket.frontend_site.bucket_regional_domain_name
-    origin_id   = "s3-upload-site"
-
+    domain_name              = aws_s3_bucket.frontend_site.bucket_regional_domain_name
+    origin_id                = local.s3_origin_id
     origin_access_control_id = aws_cloudfront_origin_access_control.s3_oac.id
   }
 
-  default_cache_behavior {
-    allowed_methods  = ["GET", "HEAD"]
-    cached_methods   = ["GET", "HEAD"]
-    target_origin_id = "s3-upload-site"
-    viewer_protocol_policy = "redirect-to-https"
-    compress         = true
+  # REST API: uploads/list
+  origin {
+    domain_name = var.upload_api_execute_domain
+    origin_id   = local.upload_api_origin_id
+    origin_path = var.upload_api_stage == "$default" ? "" : "/${var.upload_api_stage}"
 
-    cache_policy_id           = data.aws_cloudfront_cache_policy.optimized.id
-    origin_request_policy_id  = aws_cloudfront_origin_request_policy.s3_safe.id
+    custom_origin_config {
+      origin_protocol_policy = "https-only"
+      http_port              = 80
+      https_port             = 443
+      origin_ssl_protocols   = ["TLSv1.2"]
+    }
   }
 
-  restrictions {
-    geo_restriction {
-      restriction_type = "none"
+  # HTTP API: chat
+  origin {
+    domain_name = var.chat_api_execute_domain
+    origin_id   = local.chat_api_origin_id
+    origin_path = var.chat_api_stage == "$default" ? "" : "/${var.chat_api_stage}"
+
+    custom_origin_config {
+      origin_protocol_policy = "https-only"
+      http_port              = 80
+      https_port             = 443
+      origin_ssl_protocols   = ["TLSv1.2"]
     }
+  }
+
+  # ----- Behaviors -----
+  # Default: S3 site
+  default_cache_behavior {
+    target_origin_id         = local.s3_origin_id
+    allowed_methods          = ["GET", "HEAD"]
+    cached_methods           = ["GET", "HEAD"]
+    viewer_protocol_policy   = "redirect-to-https"
+    cache_policy_id          = data.aws_cloudfront_cache_policy.caching_optimized.id
+    origin_request_policy_id = data.aws_cloudfront_origin_request_policy.s3_safe.id
+    compress                 = true
+  }
+
+  # Upload API (REST): presign endpoint
+  ordered_cache_behavior {
+    path_pattern             = "/api/upload*"
+    target_origin_id         = local.upload_api_origin_id
+    allowed_methods          = ["GET","HEAD","OPTIONS","PUT","POST","PATCH","DELETE"]
+    cached_methods           = ["GET","HEAD","OPTIONS"]
+    viewer_protocol_policy   = "redirect-to-https"
+    cache_policy_id          = data.aws_cloudfront_cache_policy.caching_disabled.id
+    origin_request_policy_id = data.aws_cloudfront_origin_request_policy.all_viewer_except_host.id
+  }
+
+  # List API (REST): listing endpoint(s)
+  ordered_cache_behavior {
+    path_pattern             = "/api/list*"
+    target_origin_id         = local.upload_api_origin_id
+    allowed_methods          = ["GET","HEAD","OPTIONS","PUT","POST","PATCH","DELETE"]
+    cached_methods           = ["GET","HEAD","OPTIONS"]
+    viewer_protocol_policy   = "redirect-to-https"
+    cache_policy_id          = data.aws_cloudfront_cache_policy.caching_disabled.id
+    origin_request_policy_id = data.aws_cloudfront_origin_request_policy.all_viewer_except_host.id
+  }
+
+  # Chat API (HTTP): chat endpoint(s)
+  ordered_cache_behavior {
+    path_pattern             = "/api/chat*"
+    target_origin_id         = local.chat_api_origin_id
+    allowed_methods          = ["GET","HEAD","OPTIONS","PUT","POST","PATCH","DELETE"]
+    cached_methods           = ["GET","HEAD","OPTIONS"]
+    viewer_protocol_policy   = "redirect-to-https"
+    cache_policy_id          = data.aws_cloudfront_cache_policy.caching_disabled.id
+    origin_request_policy_id = data.aws_cloudfront_origin_request_policy.all_viewer_except_host.id
+  }
+
+  # ----- Misc -----
+  restrictions {
+    geo_restriction { restriction_type = "none" }
   }
 
   viewer_certificate {
