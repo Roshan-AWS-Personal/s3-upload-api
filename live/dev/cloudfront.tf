@@ -129,7 +129,7 @@ resource "aws_cloudfront_distribution" "frontend" {
 
   # Chat API (HTTP)
   ordered_cache_behavior {
-    path_pattern             = "/chat*"
+    path_pattern             = "/query*"
     target_origin_id         = local.chat_api_origin_id
     allowed_methods          = ["GET","HEAD","OPTIONS","PUT","POST","PATCH","DELETE"]
     cached_methods           = ["GET","HEAD","OPTIONS"]

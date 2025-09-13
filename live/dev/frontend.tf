@@ -46,7 +46,7 @@ data "template_file" "chat_html" {
   template = file("${path.module}/frontend/chat.html.tpl")
 
   vars = {
-    API_URL        = "/chat"
+    API_URL        = "/query"
     COGNITO_DOMAIN = var.cognito_domain
     CLIENT_ID      = var.cognito_client_id
     REDIRECT_URI   = var.login_redirect_url
