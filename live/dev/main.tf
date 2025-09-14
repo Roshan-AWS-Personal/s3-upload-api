@@ -100,19 +100,11 @@ resource "aws_s3_bucket_notification" "documents_notifications" {
   # S3 -> SQS (for ingest pipeline)
   queue {
     queue_arn     = aws_sqs_queue.ingest_queue.arn
-    events        = ["s3:ObjectCreated:*"]
-    filter_prefix = "docs/"   # only docs/ trigger ingest
+    # be explicit; avoid wildcard overlap with other rules
+    events        = ["s3:ObjectCreated:Put", "s3:ObjectCreated:CompleteMultipartUpload", "s3:ObjectCreated:Copy"]
+    filter_prefix = "docs/"
   }
 
-  # S3 -> logger Lambda (keep your existing logger, optional)
-  lambda_function {
-    lambda_function_arn = aws_lambda_function.s3_event_logger.arn
-    events              = ["s3:ObjectCreated:Put"]
-    filter_prefix       = "docs/"  # or "docs/" if you only want docs/
-  }
-
-  depends_on = [
-    aws_sqs_queue_policy.allow_s3,
-    aws_lambda_permission.allow_s3_trigger_documents
-  ]
+  # only the SQS rule here; no lambda rule on this bucket
+  depends_on = [aws_sqs_queue_policy.allow_s3]
 }
