@@ -7,7 +7,7 @@
 locals {
   # Build execute-api hostnames (no scheme)
   upload_api_domain = "${aws_api_gateway_rest_api.upload_api.id}.execute-api.${var.aws_region}.amazonaws.com"
-  chat_api_domain   = "tzfwnff860.execute-api.ap-southeast-2.amazonaws.com" # <-- replace ID if your HTTP API changes
+  chat_api_domain   = var.chat_api_domain # <-- replace ID if your HTTP API changes
 
   # Stages
   upload_api_stage = var.stage_name          # e.g., "dev" or "prod" (you already have this var)

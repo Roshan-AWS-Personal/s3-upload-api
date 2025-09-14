@@ -63,3 +63,8 @@ variable "cognito_client_id" {
   type        = string
 }
 
+variable "chat_api_domain" {
+  description = "execute-api hostname for chat api"
+  type        = string
+}
+
