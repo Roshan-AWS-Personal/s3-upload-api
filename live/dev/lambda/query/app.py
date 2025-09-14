@@ -1,17 +1,16 @@
-import os, json, io, time, random, collections, re
+# app.py — Query Lambda (FAISS + Bedrock)
+import os, json, io, time, random, collections
 from typing import Any, Dict, List, Optional, cast
-from urllib.parse import urlparse
 
 import boto3
 import faiss  # type: ignore
 import numpy as np
-from botocore.exceptions import ClientError
 
 # -----------------------------
 # Env & clients
 # -----------------------------
-BUCKET         = os.environ["S3_BUCKET"]
-INDEX_PREFIX   = os.environ.get("INDEX_PREFIX", "indexes/latest/")
+BUCKET = os.environ["S3_BUCKET"]
+INDEX_PREFIX = os.environ.get("INDEX_PREFIX", "indexes/latest/")
 BEDROCK_REGION = os.environ.get("BEDROCK_REGION", "ap-southeast-2")
 EMBED_MODEL_ID = os.environ.get("EMBED_MODEL_ID", "amazon.titan-embed-text-v2:0")
 CHAT_MODEL_ID  = os.environ.get("CHAT_MODEL_ID", "anthropic.claude-3-haiku-20240307-v1:0")
@@ -19,7 +18,6 @@ EMBED_DIM      = int(os.environ.get("EMBED_DIM", "1024"))
 TOP_K          = int(os.environ.get("TOP_K", "8"))
 MAX_DOCS       = int(os.environ.get("MAX_DOCS", "3"))
 MAX_TOKENS     = int(os.environ.get("MAX_TOKENS", "400"))
-CTX_CHAR_BUDGET = int(os.environ.get("CTX_CHAR_BUDGET", "1800"))
 
 s3 = boto3.client("s3")
 bedrock = boto3.client("bedrock-runtime", region_name=BEDROCK_REGION)
@@ -29,8 +27,7 @@ bedrock = boto3.client("bedrock-runtime", region_name=BEDROCK_REGION)
 # -----------------------------
 INDEX: Optional[faiss.Index] = None
 META: List[Dict[str, Any]] = []
-INDEX_ETAG: Optional[str] = None
-META_ETAG: Optional[str]  = None
+ETAG: Optional[str] = None
 
 # -----------------------------
 # Utilities
@@ -123,30 +120,24 @@ def _chat(question: str, context: str) -> str:
     return "I couldn't find the answer in the indexed context."
 
 # -----------------------------
-# Index & metadata (freshness on BOTH files)
+# Index & metadata
 # -----------------------------
 def _ensure_index_loaded() -> None:
-    """Download index & meta if either object changed or hasn't been loaded."""
-    global INDEX, META, INDEX_ETAG, META_ETAG
-
-    # HEAD both objects (meta may be updated without index changing)
-    h_idx = s3.head_object(Bucket=BUCKET, Key=INDEX_PREFIX + "index.faiss")
-    h_met = s3.head_object(Bucket=BUCKET, Key=INDEX_PREFIX + "meta.jsonl")
-    idx_etag = h_idx["ETag"].strip('"')
-    met_etag = h_met["ETag"].strip('"')
-
-    if INDEX is not None and INDEX_ETAG == idx_etag and META_ETAG == met_etag:
+    """Download index/meta if new or missing."""
+    global INDEX, META, ETAG
+    head = s3.head_object(Bucket=BUCKET, Key=INDEX_PREFIX + "index.faiss")
+    new_etag = head["ETag"].strip('"')
+    if INDEX is not None and ETAG == new_etag:
         return
 
-    idx_path  = "/tmp/index.faiss"
+    idx_path = "/tmp/index.faiss"
     meta_path = "/tmp/meta.jsonl"
     s3.download_file(BUCKET, INDEX_PREFIX + "index.faiss", idx_path)
-    s3.download_file(BUCKET, INDEX_PREFIX + "meta.jsonl",  meta_path)
+    s3.download_file(BUCKET, INDEX_PREFIX + "meta.jsonl", meta_path)
 
     INDEX = faiss.read_index(idx_path)
-    META  = [json.loads(line) for line in io.open(meta_path, "r", encoding="utf-8")]
-
-    INDEX_ETAG, META_ETAG = idx_etag, met_etag
+    META = [json.loads(line) for line in io.open(meta_path, "r", encoding="utf-8")]
+    ETAG = new_etag
 
 # -----------------------------
 # Retrieval
@@ -161,8 +152,6 @@ def _search(index: faiss.Index, q_vec: np.ndarray, k: int, filters: Dict[str, An
         if idx == -1:
             continue
         m = META[idx]
-
-        # optional filters
         if filters:
             if "doc_id" in filters:
                 allowed = filters["doc_id"]
@@ -180,21 +169,6 @@ def _search(index: faiss.Index, q_vec: np.ndarray, k: int, filters: Dict[str, An
 
         results.append({**m, "distance": float(dist)})
     return results
-
-# -----------------------------
-# Context composition helpers
-# -----------------------------
-def _read_snippet_from_s3_uri(s3_uri: str, byte_limit: int = 2048) -> str:
-    """Best-effort tiny read from S3 when preview is missing."""
-    try:
-        u = urlparse(s3_uri)
-        bucket = u.netloc
-        key = u.path.lstrip("/")
-        obj = s3.get_object(Bucket=bucket, Key=key, Range=f"bytes=0-{byte_limit-1}")
-        text = obj["Body"].read().decode("utf-8", "ignore")
-        return re.sub(r"\s+", " ", text).strip()[:300]
-    except Exception:
-        return ""
 
 def _group_hits(hits: List[Dict[str, Any]], max_docs: int) -> List[Dict[str, Any]]:
     """Group chunk hits by document; score by best chunk; keep top docs."""
@@ -215,7 +189,7 @@ def _group_hits(hits: List[Dict[str, Any]], max_docs: int) -> List[Dict[str, Any
         })
     return sorted(scored, key=lambda d: -d["score"])[:max_docs]
 
-def _build_context(grouped_docs: List[Dict[str, Any]], max_chars: int = CTX_CHAR_BUDGET) -> str:
+def _build_context(grouped_docs: List[Dict[str, Any]], max_chars: int = 1800) -> str:
     """Compose a compact, grouped context for the chat model."""
     buf: List[str] = []
     used = 0
@@ -227,12 +201,61 @@ def _build_context(grouped_docs: List[Dict[str, Any]], max_chars: int = CTX_CHAR
             break
         buf.append(header)
         used += len(header) + 2
-
         for c in d["chunks"]:
             snippet = (c.get("preview") or "").strip()
-            if not snippet and s3_uri:
-                # Fallback if preview missing/stale
-                snippet = _read_snippet_from_s3_uri(s3_uri)
             if not snippet:
                 continue
-            if used
+            if used + len(snippet) + 4 > max_chars:
+                break
+            buf.append(f"- {snippet}")
+            used += len(snippet) + 4
+    return "\n".join(buf)
+
+# -----------------------------
+# Lambda handler
+# -----------------------------
+def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
+    # CORS preflight
+    if isinstance(event, dict) and event.get("httpMethod") == "OPTIONS":
+        return _resp(200, {"ok": True})
+
+    _ensure_index_loaded()
+    if INDEX is None:
+        return _resp(500, {"error": "FAISS index not loaded"})
+
+    # Parse request body
+    body: Dict[str, Any] = {}
+    raw = event.get("body") if isinstance(event, dict) else None
+    if isinstance(raw, str):
+        body = _jsonloads_safe(raw)
+    elif isinstance(event, dict):
+        body = event
+
+    q = (body.get("q") or "").strip()
+    if not q:
+        return _resp(400, {"error": "missing q"})
+
+    k = int(body.get("k") or TOP_K)
+    filters = body.get("filters") or {}
+
+    # Embed & retrieve
+    q_vec = _embed(q)
+    hits = _search(cast(faiss.Index, INDEX), q_vec, k, filters)
+    if not hits:
+        return _resp(200, {"answer": "I couldn't find relevant context.", "sources": []})
+
+    grouped = _group_hits(hits, MAX_DOCS)
+    context_text = _build_context(grouped)
+    answer = _chat(q, context_text)
+
+    sources = [
+        {
+            "doc_id": d["doc_id"],
+            "title": d.get("title"),
+            "s3_uri": d.get("s3_uri"),
+            "snippets": [c.get("preview") for c in d["chunks"]],
+        }
+        for d in grouped
+    ]
+
+    return _resp(200, {"answer": answer, "sources": sources})
