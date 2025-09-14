@@ -10,27 +10,28 @@ import numpy as np
 # Env & clients
 # -----------------------------
 BUCKET = os.environ["S3_BUCKET"]
-INDEX_PREFIX = os.environ.get("INDEX_PREFIX", "indexes/latest/")
+INDEX_PREFIX   = os.environ.get("INDEX_PREFIX", "indexes/latest/")
 BEDROCK_REGION = os.environ.get("BEDROCK_REGION", "ap-southeast-2")
 EMBED_MODEL_ID = os.environ.get("EMBED_MODEL_ID", "amazon.titan-embed-text-v2:0")
-CHAT_MODEL_ID  = os.environ.get("CHAT_MODEL_ID", "anthropic.claude-3-haiku-20240307-v1:0")
+CHAT_MODEL_ID  = os.environ.get("CHAT_MODEL_ID",  "anthropic.claude-3-haiku-20240307-v1:0")
 EMBED_DIM      = int(os.environ.get("EMBED_DIM", "1024"))
 TOP_K          = int(os.environ.get("TOP_K", "8"))
 MAX_DOCS       = int(os.environ.get("MAX_DOCS", "3"))
 MAX_TOKENS     = int(os.environ.get("MAX_TOKENS", "400"))
+DEBUG_LOG_CTX  = os.environ.get("DEBUG_LOG_CONTEXT", "0") in ("1", "true", "TRUE")
 
 s3 = boto3.client("s3")
 bedrock = boto3.client("bedrock-runtime", region_name=BEDROCK_REGION)
 
 # -----------------------------
-# Globals (hot reload in Lambda)
+# Globals (warm container cache)
 # -----------------------------
 INDEX: Optional[faiss.Index] = None
 META: List[Dict[str, Any]] = []
 ETAG: Optional[str] = None
 
 # -----------------------------
-# Utilities
+# Helpers
 # -----------------------------
 def _resp(status: int, body: Dict[str, Any]) -> Dict[str, Any]:
     return {
@@ -51,9 +52,6 @@ def _jsonloads_safe(s: str) -> Dict[str, Any]:
     except Exception:
         return {}
 
-# -----------------------------
-# Bedrock helpers
-# -----------------------------
 def _invoke_json_with_retry(
     model_id: str,
     payload: Dict[str, Any],
@@ -91,23 +89,27 @@ def _embed(text: str) -> np.ndarray:
         raise RuntimeError("Bad embedding response (missing 'embedding').")
     v = np.array(emb, dtype=np.float32)
     v /= (np.linalg.norm(v) or 1.0)
-    return v.astype(np.float32, copy=False)[None, :]  # shape (1, d)
+    return v.astype(np.float32, copy=False)[None, :]
 
 def _chat(question: str, context: str) -> str:
+    # Stronger instruction + deterministic settings
     payload = {
         "anthropic_version": "bedrock-2023-05-31",
-        "max_tokens": MAX_TOKENS,
+        "system": (
+            "You answer ONLY using the EXCERPTS provided. "
+            "If the user asks about overall contents, summarize the EXCERPTS. "
+            "If the answer is not present, say you don't know."
+        ),
         "messages": [{
             "role": "user",
             "content": [{
                 "type": "text",
-                "text": (
-                    "You are a concise assistant that ONLY uses the provided context. "
-                    "If the answer is not in the context, say you don't know.\n\n"
-                    f"Question:\n{question}\n\nContext:\n{context}"
-                )
+                "text": f"Question:\n{question}\n\nEXCERPTS:\n{context}"
             }]
         }],
+        "max_tokens": MAX_TOKENS,
+        "temperature": 0,        # deterministic
+        "top_p": 0.0
     }
     data = _invoke_json_with_retry(CHAT_MODEL_ID, payload)
     blocks = data.get("content", [])
@@ -120,10 +122,9 @@ def _chat(question: str, context: str) -> str:
     return "I couldn't find the answer in the indexed context."
 
 # -----------------------------
-# Index & metadata
+# Index loading
 # -----------------------------
 def _ensure_index_loaded() -> None:
-    """Download index/meta if new or missing."""
     global INDEX, META, ETAG
     head = s3.head_object(Bucket=BUCKET, Key=INDEX_PREFIX + "index.faiss")
     new_etag = head["ETag"].strip('"')
@@ -143,10 +144,8 @@ def _ensure_index_loaded() -> None:
 # Retrieval
 # -----------------------------
 def _search(index: faiss.Index, q_vec: np.ndarray, k: int, filters: Dict[str, Any]) -> List[Dict[str, Any]]:
-    """Vector search + simple metadata filtering (client-side)."""
     k = max(1, min(int(k), len(META)))
     D, I = index.search(q_vec.astype(np.float32, copy=False), k)  # type: ignore[attr-defined]
-
     results: List[Dict[str, Any]] = []
     for dist, idx in zip(D[0].tolist(), I[0].tolist()):
         if idx == -1:
@@ -166,12 +165,10 @@ def _search(index: faiss.Index, q_vec: np.ndarray, k: int, filters: Dict[str, An
                 allowed_mime = filters["mime"]
                 if isinstance(allowed_mime, list) and m.get("mime") not in allowed_mime:
                     continue
-
         results.append({**m, "distance": float(dist)})
     return results
 
 def _group_hits(hits: List[Dict[str, Any]], max_docs: int) -> List[Dict[str, Any]]:
-    """Group chunk hits by document; score by best chunk; keep top docs."""
     bydoc: Dict[str, List[Dict[str, Any]]] = collections.defaultdict(list)
     for h in hits:
         bydoc[h["doc_id"]].append(h)
@@ -190,32 +187,35 @@ def _group_hits(hits: List[Dict[str, Any]], max_docs: int) -> List[Dict[str, Any
     return sorted(scored, key=lambda d: -d["score"])[:max_docs]
 
 def _build_context(grouped_docs: List[Dict[str, Any]], max_chars: int = 1800) -> str:
-    """Compose a compact, grouped context for the chat model."""
-    buf: List[str] = []
+    """Build a compact, **excerpt-first** context text."""
+    pieces: List[str] = []
     used = 0
     for d in grouped_docs:
         title = d.get("title") or "Untitled"
         s3_uri = d.get("s3_uri") or ""
-        header = f"Document: {title} ({s3_uri})"
-        if used + len(header) + 2 > max_chars:
+        header = f"[{title}] ({s3_uri})"
+        if used + len(header) + 1 > max_chars:
             break
-        buf.append(header)
-        used += len(header) + 2
+        pieces.append(header)
+        used += len(header) + 1
+
         for c in d["chunks"]:
             snippet = (c.get("preview") or "").strip()
             if not snippet:
                 continue
-            if used + len(snippet) + 4 > max_chars:
+            # ensure each excerpt is on its own line and clearly marked
+            line = f"- {snippet}"
+            if used + len(line) + 1 > max_chars:
                 break
-            buf.append(f"- {snippet}")
-            used += len(snippet) + 4
-    return "\n".join(buf)
+            pieces.append(line)
+            used += len(line) + 1
+
+    return "\n".join(pieces)
 
 # -----------------------------
 # Lambda handler
 # -----------------------------
 def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
-    # CORS preflight
     if isinstance(event, dict) and event.get("httpMethod") == "OPTIONS":
         return _resp(200, {"ok": True})
 
@@ -223,7 +223,6 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
     if INDEX is None:
         return _resp(500, {"error": "FAISS index not loaded"})
 
-    # Parse request body
     body: Dict[str, Any] = {}
     raw = event.get("body") if isinstance(event, dict) else None
     if isinstance(raw, str):
@@ -238,7 +237,6 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
     k = int(body.get("k") or TOP_K)
     filters = body.get("filters") or {}
 
-    # Embed & retrieve
     q_vec = _embed(q)
     hits = _search(cast(faiss.Index, INDEX), q_vec, k, filters)
     if not hits:
@@ -246,6 +244,11 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
 
     grouped = _group_hits(hits, MAX_DOCS)
     context_text = _build_context(grouped)
+
+    if DEBUG_LOG_CTX:
+        # tiny preview in logs to verify excerpts are present
+        print("CTX_PREVIEW:", context_text[:200].replace("\n", " | "))
+
     answer = _chat(q, context_text)
 
     sources = [
