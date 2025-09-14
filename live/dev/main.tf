@@ -108,7 +108,7 @@ resource "aws_s3_bucket_notification" "documents_notifications" {
   lambda_function {
     lambda_function_arn = aws_lambda_function.s3_event_logger.arn
     events              = ["s3:ObjectCreated:Put"]
-    filter_prefix       = ""  # or "docs/" if you only want docs/
+    filter_prefix       = "docs/"  # or "docs/" if you only want docs/
   }
 
   depends_on = [
