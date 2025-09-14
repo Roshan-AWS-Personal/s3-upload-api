@@ -94,20 +94,25 @@ resource "aws_sqs_queue_policy" "allow_s3" {
   policy    = data.aws_iam_policy_document.s3_to_sqs.json
 }
 
-# main.tf
-resource "aws_s3_bucket_notification" "docs_to_sqs" {
+resource "aws_s3_bucket_notification" "documents_notifications" {
   bucket = aws_s3_bucket.documents_bucket.id
 
+  # S3 -> SQS (for ingest pipeline)
   queue {
-    queue_arn = aws_sqs_queue.ingest_queue.arn
-    events    = ["s3:ObjectCreated:*"]
-
-    # # Omit when empty (null means "don’t send the field")
-    # filter_prefix = var.s3_prefix != "" ? var.s3_prefix : null
-    # filter_suffix = var.s3_suffix != "" ? var.s3_suffix : null
+    queue_arn     = aws_sqs_queue.ingest_queue.arn
+    events        = ["s3:ObjectCreated:*"]
+    filter_prefix = "docs/"   # only docs/ trigger ingest
   }
 
-  # Ensure the queue policy exists before S3 registers the notification
-  depends_on = [aws_sqs_queue_policy.allow_s3]
-}
+  # S3 -> logger Lambda (keep your existing logger, optional)
+  lambda_function {
+    lambda_function_arn = aws_lambda_function.s3_event_logger.arn
+    events              = ["s3:ObjectCreated:Put"]
+    filter_prefix       = ""  # or "docs/" if you only want docs/
+  }
 
+  depends_on = [
+    aws_sqs_queue_policy.allow_s3,
+    aws_lambda_permission.allow_s3_trigger_documents
+  ]
+}
