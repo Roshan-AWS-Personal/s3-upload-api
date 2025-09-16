@@ -1,3 +1,18 @@
+locals {
+    name = "ai-kb-dev"
+    ingest_build_id = sha256(join("", [
+      filesha256("${path.root}/lambda/ingest/Dockerfile"),
+      filesha256("${path.root}/lambda/ingest/requirements.txt"),
+      filesha256("${path.root}/lambda/ingest/app.py"),
+    ]))
+
+    query_build_id = sha256(join("", [
+      filesha256("${path.root}/lambda/query/Dockerfile"),
+      filesha256("${path.root}/lambda/query/requirements.txt"),
+      filesha256("${path.root}/lambda/query/app.py"),
+    ]))
+}
+
 # REST API
 resource "aws_api_gateway_rest_api" "upload_api" {
   name        = "image-upload-api"
@@ -321,4 +336,46 @@ resource "aws_api_gateway_integration_response" "files_options_response" {
     aws_api_gateway_method_response.files_options_response
   ]
 }
+
+resource "aws_apigatewayv2_api" "kb" {
+  name          = "${local.name}-query-api"
+  protocol_type = "HTTP"
+  cors_configuration {
+    allow_headers = ["content-type", "authorization"]
+    allow_methods = ["POST","OPTIONS"]
+    allow_origins = ["*"]  # lock down later
+  }
+}
+
+resource "aws_apigatewayv2_integration" "kb" {
+  api_id                 = aws_apigatewayv2_api.kb.id
+  integration_type       = "AWS_PROXY"
+  integration_uri        = aws_lambda_function.query.invoke_arn
+  payload_format_version = "2.0"
+}
+
+resource "aws_apigatewayv2_route" "kb" {
+  api_id    = aws_apigatewayv2_api.kb.id
+  route_key = "POST /query"
+  target    = "integrations/${aws_apigatewayv2_integration.kb.id}"
+}
+
+resource "aws_lambda_permission" "kb" {
+  statement_id  = "AllowAPIGWInvoke"
+  action        = "lambda:InvokeFunction"
+  function_name = aws_lambda_function.query.arn
+  principal     = "apigateway.amazonaws.com"
+  source_arn    = "${aws_apigatewayv2_api.kb.execution_arn}/*/*"
+}
+
+resource "aws_apigatewayv2_stage" "default" {
+  api_id      = aws_apigatewayv2_api.kb.id
+  name        = "$default"
+  auto_deploy = true
+}
+
+output "query_api_endpoint" {
+  value = "${aws_apigatewayv2_api.kb.api_endpoint}/query"
+}
+
 

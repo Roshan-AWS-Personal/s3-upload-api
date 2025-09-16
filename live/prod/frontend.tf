@@ -40,12 +40,35 @@ resource "aws_s3_bucket_policy" "allow_public_read" {
     ]
   })
 }
+
+# template for chat page
+data "template_file" "chat_html" {
+  template = file("${path.module}/frontend/chat.html.tpl")
+
+  vars = {
+    API_URL        = "/query"
+    COGNITO_DOMAIN = var.cognito_domain
+    CLIENT_ID      = var.cognito_client_id
+    REDIRECT_URI   = var.login_redirect_url
+    LOGOUT_URI     = var.logout_redirect_url
+  }
+}
+
+resource "aws_s3_object" "chat_html" {
+  bucket       = aws_s3_bucket.frontend_site.id
+  key          = "chat.html"
+  content      = data.template_file.chat_html.rendered
+  content_type = "text/html"
+}
+
+
+
 data "template_file" "index_html" {
   template = file("${path.module}/frontend/index.html.tpl")
 
   vars = {
     BEARER_TOKEN    = var.upload_api_secret
-    API_URL         = var.upload_api_url
+    API_URL         = "/upload"
     COGNITO_DOMAIN  = var.cognito_domain
     CLIENT_ID       = var.cognito_client_id
     REDIRECT_URI    = var.login_redirect_url
@@ -72,7 +95,7 @@ data "template_file" "list_html" {
   template = file("${path.module}/frontend/list.html.tpl")
 
   vars = {
-    API_URL         = var.list_api_url
+    API_URL         = "/files"
     COGNITO_DOMAIN  = var.cognito_domain
     CLIENT_ID       = var.cognito_client_id
     REDIRECT_URI    = var.redirect_uri_list

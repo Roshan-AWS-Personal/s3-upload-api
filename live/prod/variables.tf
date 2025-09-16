@@ -32,6 +32,12 @@ variable "upload_api_url" {
   default     = "prod"
 }
 
+variable "list_api_url" {
+  description = "List URL for the API Gateway"
+  type        = string
+  default     = "prod"
+}
+
 variable "login_redirect_url" {
   description = "Frontend URL to redirect after successful login"
   type        = string
@@ -40,12 +46,6 @@ variable "login_redirect_url" {
 variable "logout_redirect_url" {
   description = "Frontend URL to redirect after logout"
   type        = string
-}
-
-variable "list_api_url" {
-  description = "List URL for the API Gateway"
-  type        = string
-  default     = "dev"
 }
 
 variable "redirect_uri_list" {
@@ -60,6 +60,11 @@ variable "cognito_domain" {
 
 variable "cognito_client_id" {
   description = "Cognito App Client ID"
+  type        = string
+}
+
+variable "chat_api_domain" {
+  description = "execute-api hostname for chat api"
   type        = string
 }
 
