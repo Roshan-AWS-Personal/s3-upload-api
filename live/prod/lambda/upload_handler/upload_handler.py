@@ -12,10 +12,11 @@ ses         = boto3.client('ses')
 dynamodb    = boto3.resource("dynamodb")
 table       = dynamodb.Table('file_upload_metadata')
 
+DOCS_KEY_PREFIX     = os.environ.get("DOCS_KEY_PREFIX", "docs/")  # <- NEW
 MAX_FILE_SIZE       = 5 * 1024 * 1024
 ALLOWED_IMAGE_TYPES = {"jpeg", "jpg", "png"}
-recipient_email     = "venkatesanroshan@gmail.com"
 
+recipient_email     = "venkatesanroshan@gmail.com"
 IMAGE_EXTENSIONS    = {"jpg", "jpeg", "png", "gif"}
 DOCUMENT_EXTENSIONS = {"pdf", "doc", "docx", "txt"}
 
@@ -67,10 +68,10 @@ def lambda_handler(event, context):
 
         logger.info(f"Request from {username} ({user_email}), token_use={token_use}")
 
-        query       = event.get("queryStringParameters") or {}
-        filename    = query.get("filename")
-        raw_size    = query.get("filesize", 0)
-        content_type= query.get("content_type")
+        query        = event.get("queryStringParameters") or {}
+        filename     = query.get("filename")
+        raw_size     = query.get("filesize", 0)
+        content_type = query.get("content_type")
 
         try:
             filesize = int(raw_size)
@@ -85,6 +86,13 @@ def lambda_handler(event, context):
 
         key    = sanitize_filename(filename)
         BUCKET = get_bucket_for_file(filename)
+
+        # --------- NEW: force docs/ prefix for document uploads ----------
+        if BUCKET == os.environ.get("DOCUMENTS_BUCKET"):
+            if not key.startswith(DOCS_KEY_PREFIX):
+                key = f"{DOCS_KEY_PREFIX}{key}"
+        # -----------------------------------------------------------------
+
         presigned_url = s3.generate_presigned_url(
             ClientMethod='put_object',
             Params={'Bucket': BUCKET, 'Key': key, 'ContentType': content_type},
@@ -113,9 +121,6 @@ def lambda_handler(event, context):
         }
         table.put_item(Item=item)
 
-        # send SES email (unchanged) ...
-
-        # ←—— THIS RETURN NOW INCLUDES *ALL* CORS HEADERS ———→
         return {
             "statusCode": 200,
             "body": json.dumps({
