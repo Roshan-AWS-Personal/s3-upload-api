@@ -4,7 +4,7 @@
 
 
 locals {
-    name = "ai-kb-dev"
+    name = "ai-kb-prod"
     ingest_build_id = sha256(join("", [
       filesha256("${path.root}/lambda/ingest/Dockerfile"),
       filesha256("${path.root}/lambda/ingest/requirements.txt"),
