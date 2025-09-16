@@ -8,9 +8,7 @@ on:
         required: true
         type: choice
         default: "dev"
-        options:
-          - dev
-          - prod
+        options: [dev, prod]
       confirm_apply:
         description: "Set to true to run the apply step (default=false → plan only)"
         required: false
@@ -29,15 +27,15 @@ jobs:
       AWS_REGION: ap-southeast-2
 
       # Dev vs Prod credentials
-      AWS_ACCESS_KEY_ID_DEV:     ${{ secrets.AWS_ACCESS_KEY_ID_DEV }}
-      AWS_SECRET_ACCESS_KEY_DEV: ${{ secrets.AWS_SECRET_ACCESS_KEY_DEV }}
-      AWS_ACCESS_KEY_ID_PROD:    ${{ secrets.AWS_ACCESS_KEY_ID_PROD }}
+      AWS_ACCESS_KEY_ID_DEV:      ${{ secrets.AWS_ACCESS_KEY_ID_DEV }}
+      AWS_SECRET_ACCESS_KEY_DEV:  ${{ secrets.AWS_SECRET_ACCESS_KEY_DEV }}
+      AWS_ACCESS_KEY_ID_PROD:     ${{ secrets.AWS_ACCESS_KEY_ID_PROD }}
       AWS_SECRET_ACCESS_KEY_PROD: ${{ secrets.AWS_SECRET_ACCESS_KEY_PROD }}
-      AWS_UPLOAD_API_SECRET_DEV: ${{ secrets.UPLOAD_API_SECRET_DEV }}
+      AWS_UPLOAD_API_SECRET_DEV:  ${{ secrets.UPLOAD_API_SECRET_DEV }}
       AWS_UPLOAD_API_SECRET_PROD: ${{ secrets.UPLOAD_API_SECRET_PROD }}
-      AWS_UPLOAD_API_URL_DEV:    ${{ secrets.AWS_API_URL_DEV }}
-      AWS_UPLOAD_API_URL_PROD:   ${{ secrets.AWS_API_URL_PROD }}
-      AWS_LIST_API_URL_REDIRECT_DEV: ${{ secrets.AWS_API_URL_LIST_FILES_DEV}}
+      AWS_UPLOAD_API_URL_DEV:     ${{ secrets.AWS_API_URL_DEV }}
+      AWS_UPLOAD_API_URL_PROD:    ${{ secrets.AWS_API_URL_PROD }}
+      AWS_LIST_API_URL_REDIRECT_DEV: ${{ secrets.AWS_API_URL_LIST_FILES_DEV }}
 
       # Backend resources
       STATE_BUCKET_DEV:   ${{ secrets.STATE_BUCKET_DEV }}
@@ -45,9 +43,13 @@ jobs:
       DYNAMODB_TABLE:     ${{ secrets.DYNAMODB_TABLE }}
       STATE_PREFIX:       ${{ secrets.STATE_PREFIX }}
 
-      # OIDC role ARNs (store as repo/environment secrets)
+      # OIDC role ARNs
       ROLE_ARN_DEV:  ${{ secrets.ROLE_ARN_DEV }}
       ROLE_ARN_PROD: ${{ secrets.ROLE_ARN_PROD }}
+
+      # Chat API domains (per env)
+      CHAT_API_DOMAIN_DEV:  ${{ secrets.CHAT_API_DOMAIN }}
+      CHAT_API_DOMAIN_PROD: ${{ secrets.CHAT_API_DOMAIN_PROD }}
 
     steps:
       - name: Checkout
@@ -115,6 +117,7 @@ jobs:
             LOGIN_URL=${{ secrets.LOGIN_URL_DEV }}
             REDIRECT_URI_LIST=${{ secrets.AWS_API_LIST_REDIRECT_URL_DEV }}
             API_URL_LIST_FILES=${{ secrets.AWS_API_URL_LIST_FILES_DEV }}
+            CHAT_DOMAIN=${{ env.CHAT_API_DOMAIN_DEV }}
           else
             SECRET=${{ env.AWS_UPLOAD_API_SECRET_PROD }}
             API_URL=${{ env.AWS_UPLOAD_API_URL_PROD }}
@@ -123,6 +126,7 @@ jobs:
             COGNITO_CLIENT_ID=${{ secrets.COGNITO_CLIENT_ID_PROD }}
             COGNITO_DOMAIN=${{ secrets.COGNITO_DOMAIN_PROD }}
             LOGIN_URL=${{ secrets.LOGIN_URL_PROD }}
+            CHAT_DOMAIN=${{ env.CHAT_API_DOMAIN_PROD }}
           fi
 
           terraform plan \
@@ -138,7 +142,7 @@ jobs:
             -var="cognito_domain=$COGNITO_DOMAIN" \
             -var="redirect_uri_list=$REDIRECT_URI_LIST" \
             -var="list_api_url=$API_URL_LIST_FILES" \
-            -var="chat_api_domain=${{ secrets.CHAT_API_DOMAIN }}" \
+            -var="chat_api_domain=$CHAT_DOMAIN" \
             -out=tfplan
 
       - name: Terraform Apply (manual)
