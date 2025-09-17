@@ -4,15 +4,28 @@ resource "aws_sqs_queue" "ingest_dlq" {
   message_retention_seconds = 1209600
 }
 
+# SQS
 resource "aws_sqs_queue" "ingest_queue" {
   name = "${local.name}-ingest-queue"
-  visibility_timeout_seconds = 90
+
+  visibility_timeout_seconds = 6 * aws_lambda_function.ingest.timeout
 
   redrive_policy = jsonencode({
     deadLetterTargetArn = aws_sqs_queue.ingest_dlq.arn
     maxReceiveCount     = 5
   })
 }
+
+# Event source mapping (unchanged)
+resource "aws_lambda_event_source_mapping" "sqs_to_ingest" {
+  event_source_arn                   = aws_sqs_queue.ingest_queue.arn
+  function_name                      = aws_lambda_function.ingest.arn
+  batch_size                         = 10
+  maximum_batching_window_in_seconds = 5
+  function_response_types            = ["ReportBatchItemFailures"]
+  enabled                            = true
+}
+
 
 resource "aws_lambda_event_source_mapping" "sqs_to_ingest" {
   event_source_arn                        = aws_sqs_queue.ingest_queue.arn
