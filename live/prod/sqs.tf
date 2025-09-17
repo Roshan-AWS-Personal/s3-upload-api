@@ -14,13 +14,13 @@ resource "aws_sqs_queue" "ingest_queue" {
   })
 }
 
-# resource "aws_lambda_event_source_mapping" "sqs_to_ingest" {
-#   event_source_arn                        = aws_sqs_queue.ingest_queue.arn
-#   function_name                           = aws_lambda_function.ingest.arn
-#   batch_size                              = 10
-#   maximum_batching_window_in_seconds      = 5
-#   function_response_types                 = ["ReportBatchItemFailures"]
-# }
+resource "aws_lambda_event_source_mapping" "sqs_to_ingest" {
+  event_source_arn                        = aws_sqs_queue.ingest_queue.arn
+  function_name                           = aws_lambda_function.ingest.arn
+  batch_size                              = 10
+  maximum_batching_window_in_seconds      = 5
+  function_response_types                 = ["ReportBatchItemFailures"]
+}
 
 
 data "aws_iam_policy_document" "ingest_runtime_perms" {
